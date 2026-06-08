@@ -1232,21 +1232,19 @@ function SellTab({products,customers,setOrders,setDebts,api}){
 
 /* ── ORDERS TAB ─────────────────────────────────────────────── */
 function OrdersTab({orders,setOrders,setDebts,debts,api}){
-  const [timeF,setTimeF]=useState("today");
+  const [timeF,setTimeF]=useState("week"); // default 7 ngày thay vì hôm nay
   const [search,setSearch]=useState(""); // tìm theo KH + tên SP
   const [sel,setSel]=useState(null); const [toast,setToast]=useState("");
   const [busyApprove,setBusyApprove]=useState(false);
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
 
-  // Đơn hàng = chỉ đơn đã giao (done), đơn tạm nằm ở tab Nguồn Hàng
+  // Hiển thị CẢ done + pending, phân biệt bằng badge
   const filtered=orders.filter(o=>{
-    if(o.trangThai!=="done") return false;
     const d=new Date(o.ngay),now=new Date();
     if(timeF==="today"&&!sameDay(o.ngay)) return false;
     if(timeF==="week"&&(now-d)/86400000>7) return false;
     if(timeF==="month"&&(d.getMonth()!==now.getMonth()||d.getFullYear()!==now.getFullYear())) return false;
     if(timeF==="year"&&d.getFullYear()!==now.getFullYear()) return false;
-    // Tìm theo tên KH hoặc tên SP trong đơn
     if(search){
       const q=search.toLowerCase();
       const matchKH=o.tenKH.toLowerCase().includes(q);
@@ -1254,8 +1252,11 @@ function OrdersTab({orders,setOrders,setDebts,debts,api}){
       if(!matchKH&&!matchSP) return false;
     }
     return true;
-  });
-  const totals=filtered.reduce((a,o)=>({tien:a.tien+o.tongTien,lai:a.lai+(o.tongTien-o.tongVon)}),{tien:0,lai:0});
+  }).sort((a,b)=>new Date(b.ngay)-new Date(a.ngay));
+
+  const doneList    = filtered.filter(o=>o.trangThai==="done");
+  const pendingList = filtered.filter(o=>o.trangThai==="pending");
+  const totals=doneList.reduce((a,o)=>({tien:a.tien+o.tongTien,lai:a.lai+(o.tongTien-o.tongVon)}),{tien:0,lai:0});
 
   const approve = async (id) => {
     if(busyApprove) return;
@@ -1297,7 +1298,7 @@ function OrdersTab({orders,setOrders,setDebts,debts,api}){
       <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 16px"}}>
         <div style={{color:"white",fontWeight:800,fontSize:17,marginBottom:10}}>📋 Quản lý đơn hàng</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-          {[["Tổng đơn",filtered.length,"📦"],["Doanh thu",fmt(totals.tien),"💰"],["Lợi nhuận",fmt(totals.lai),"📈"]].map(([l,v,ic])=>(
+          {[["Đã giao",doneList.length,"✅"],[`Đang chờ (${pendingList.length})`,fmt(totals.tien),"⏳"],["Lợi nhuận",fmt(totals.lai),"📈"]].map(([l,v,ic])=>(
             <div key={l} style={{background:"rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 10px",backdropFilter:"blur(4px)"}}>
               <div style={{color:"rgba(255,255,255,0.75)",fontSize:10,fontWeight:600}}>{ic} {l}</div>
               <div style={{color:"white",fontWeight:800,fontSize:13,marginTop:2}}>{v}</div>
@@ -1317,29 +1318,65 @@ function OrdersTab({orders,setOrders,setDebts,debts,api}){
           onChange={v=>setTimeF(v==="Hôm nay"?"today":v==="7 ngày"?"week":v==="Tháng này"?"month":v==="Năm nay"?"year":"all")} teal/>
       </div>
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map(o=>(
-          <Card key={o.id} onClick={()=>setSel(o)} style={{padding:"12px 14px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                  <span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span>
-                  <Badge label={o.trangThai==="done"?"✅ Xong":"⏳ Chờ"} color={o.trangThai==="done"?C.green:C.orange} bg={o.trangThai==="done"?C.greenLight:C.orangeLight} size={10}/>
+        {/* ⏳ Đơn tạm chờ duyệt */}
+        {pendingList.length>0&&<>
+          <div style={{fontSize:11,fontWeight:700,color:C.orange,padding:"6px 4px 4px",letterSpacing:0.5}}>⏳ CHỜ DUYỆT ({pendingList.length})</div>
+          {pendingList.map(o=>(
+            <Card key={o.id} onClick={()=>setSel(o)} style={{padding:"12px 14px",border:`1.5px solid ${C.amber}44`,background:"#FFFBEB"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                    <span style={{fontWeight:800,fontSize:12,color:C.orange}}>{o.id}</span>
+                    <Badge label="⏳ Chờ" color={C.orange} bg={C.orangeLight} size={10}/>
+                  </div>
+                  <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div>
+                  <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} • {o.items?.length||0} sp</div>
                 </div>
-                <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div>
-                <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} • {o.items?.length||0} sp</div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontWeight:900,fontSize:16,color:C.orange,marginBottom:4}}>{fmt(o.tongTien)}</div>
+                  <Btn onClick={e=>{e.stopPropagation();approve(o.id);}} color={C.green} sm disabled={busyApprove}>{busyApprove?"...":"✅ Duyệt"}</Btn>
+                </div>
               </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div>
-                <div style={{fontSize:11,color:C.green,fontWeight:600}}>+{fmt(o.tongTien-o.tongVon)} lãi</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:"#FEF3C7",padding:"2px 8px",borderRadius:8,fontSize:11,color:C.orange,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}
+                {(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}
               </div>
-            </div>
-            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-              {o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}
-              {(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}
-            </div>
-          </Card>
-        ))}
-        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>📭</div><div style={{fontWeight:600,marginTop:8}}>Không có đơn hàng</div></div>}
+            </Card>
+          ))}
+        </>}
+        {/* ✅ Đơn đã giao */}
+        {doneList.length>0&&<>
+          {pendingList.length>0&&<div style={{fontSize:11,fontWeight:700,color:C.green,padding:"8px 4px 4px",letterSpacing:0.5}}>✅ ĐÃ GIAO ({doneList.length})</div>}
+          {doneList.map(o=>(
+            <Card key={o.id} onClick={()=>setSel(o)} style={{padding:"12px 14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                    <span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span>
+                    <Badge label="✅ Đã giao" color={C.green} bg={C.greenLight} size={10}/>
+                  </div>
+                  <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div>
+                  <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} • {o.items?.length||0} sp</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div>
+                  <div style={{fontSize:11,color:C.green,fontWeight:600}}>+{fmt(o.tongTien-o.tongVon)} lãi</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}
+                {(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}
+              </div>
+            </Card>
+          ))}
+        </>}
+        {filtered.length===0&&(
+          <div style={{textAlign:"center",padding:40,color:C.textMuted}}>
+            <div style={{fontSize:40}}>📭</div>
+            <div style={{fontWeight:600,marginTop:8}}>Không có đơn trong khoảng này</div>
+            <div style={{fontSize:12,marginTop:4}}>Thử chọn "Tất cả" để xem toàn bộ</div>
+          </div>
+        )}
       </div>
       {sel&&(
         <Modal onClose={()=>setSel(null)} fullBottom>
