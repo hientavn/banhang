@@ -2017,8 +2017,16 @@ function App(){
 
   const api=useMemo(()=>scriptUrl?createApi(scriptUrl):null,[scriptUrl]);
   // allUsers: dùng toàn bộ tài khoản GS khi có, fallback mock khi chưa kết nối
+  // Merge allGsUsers + customers mới thêm trong session (chưa có trong GS cache)
   const [allGsUsers,setAllGsUsers]=useState([]); // tất cả tài khoản từ GS
-  const allUsers=useMemo(()=>allGsUsers.length>0?allGsUsers:[SELLER,...customers],[allGsUsers,customers]);
+  const allUsers=useMemo(()=>{
+    if(allGsUsers.length>0){
+      const gsIds=new Set(allGsUsers.map(u=>u.id));
+      const newCusts=customers.filter(c=>!gsIds.has(c.id)); // KH mới thêm trong session
+      return [...allGsUsers,...newCusts];
+    }
+    return [SELLER,...customers];
+  },[allGsUsers,customers]);
   const login=useCallback((u)=>{setUser(u);setTab(u.loai==="seller"?"sell":"shop");},[]);
     const logout=()=>{setUser(null);setTab("");};
   const updateUser=(updated)=>setUser(updated);
