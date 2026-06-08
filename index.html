@@ -171,7 +171,7 @@ function doGet(e) {
 
   if (act === 'getTaiKhoan') {
     result.data = sheet2arr(ss,'TaiKhoan').map(r => ({
-      id:r[0],username:r[1],password:r[2],ten:r[3],loai:r[4],sdt:r[5]||'',diaChi:r[6]||'',avatar:r[7]||''
+      id:String(r[0]),username:String(r[1]),password:String(r[2]),ten:String(r[3]),loai:String(r[4]),sdt:r[5]?String(r[5]):'',diaChi:r[6]?String(r[6]):'',avatar:r[7]?String(r[7]):''
     }));
   }
   else if (act === 'getSanPham') {
@@ -464,7 +464,7 @@ function Login({allUsers,onLogin,onSaveUrl,scriptUrl,loadingAccounts=false}){
   const login=async()=>{
     if(!u||!p){setErr("Vui lòng nhập đầy đủ");return;}
     setLoading(true);await new Promise(r=>setTimeout(r,350));
-    const found=allUsers.find(x=>x.username===u&&x.password===p);
+    const found=allUsers.find(x=>String(x.username)===u.trim()&&String(x.password)===p.trim());
     if(!found){setErr("Sai tài khoản hoặc mật khẩu");setLoading(false);return;}
     if(rememberMe&&localStorage.setItem){localStorage.setItem("saved_u",u);localStorage.setItem("saved_p",p);}
     else if(localStorage.removeItem){localStorage.removeItem("saved_u");localStorage.removeItem("saved_p");}
