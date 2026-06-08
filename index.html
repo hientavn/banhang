@@ -140,7 +140,7 @@ const APPS_SCRIPT_CODE = `// ===================================================
 function initializeSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const config = [
-    ['TaiKhoan',   ['id','username','password','ten','loai','sdt','diaChi']],
+    ['TaiKhoan',   ['id','username','password','ten','loai','sdt','diaChi','avatar']],
     ['SanPham',    ['id','ten','gia','von','nhom']],
     ['DonHang',    ['id','maKH','tenKH','ngay','trangThai','tongTien','tongVon']],
     ['ChiTietDon', ['maDon','maSP','ten','sl','gia','von','nhom']],  // nhom ở cột 7
@@ -171,7 +171,7 @@ function doGet(e) {
 
   if (act === 'getTaiKhoan') {
     result.data = sheet2arr(ss,'TaiKhoan').map(r => ({
-      id:r[0],username:r[1],password:r[2],ten:r[3],loai:r[4],sdt:r[5]||'',diaChi:r[6]||''
+      id:r[0],username:r[1],password:r[2],ten:r[3],loai:r[4],sdt:r[5]||'',diaChi:r[6]||'',avatar:r[7]||''
     }));
   }
   else if (act === 'getSanPham') {
@@ -234,7 +234,7 @@ function doPost(e) {
   }
   else if (act === 'addCustomer') {
     ss.getSheetByName('TaiKhoan').appendRow([
-      body.id,body.username,body.password,body.ten,body.loai,body.sdt||'',body.diaChi||''
+      body.id,body.username,body.password,body.ten,body.loai,body.sdt||'',body.diaChi||'',body.avatar||''
     ]);
   }
   else if (act === 'addProduct') {
@@ -247,8 +247,9 @@ function doPost(e) {
     const rows = sh.getDataRange().getValues();
     for(let i=1;i<rows.length;i++){
       if(rows[i][0]===body.id){
-        sh.getRange(i+1,4).setValue(body.ten||rows[i][3]);
-        sh.getRange(i+1,6).setValue(body.sdt||rows[i][5]);
+        if(body.ten!==undefined) sh.getRange(i+1,4).setValue(body.ten||rows[i][3]);
+        if(body.sdt!==undefined) sh.getRange(i+1,6).setValue(body.sdt||rows[i][5]);
+        if(body.avatar!==undefined) sh.getRange(i+1,8).setValue(body.avatar||'');
         break;
       }
     }
@@ -297,10 +298,10 @@ function Toast({msg}){if(!msg)return null;return <div style={{position:"fixed",b
 function Badge({label,color=C.blue,bg=C.blueLight,size=11}){return <span style={{background:bg,color,padding:"2px 10px",borderRadius:20,fontSize:size,fontWeight:700,fontFamily:font,whiteSpace:"nowrap"}}>{label}</span>;}
 function Btn({children,onClick,color=C.blue,outline=false,full=false,sm=false,disabled=false,style:st={}}){return <button onClick={onClick} disabled={disabled} style={{background:outline?"transparent":disabled?"#CBD5E1":color,color:outline?color:"white",border:`2px solid ${disabled?"#CBD5E1":color}`,borderRadius:12,padding:sm?"7px 14px":"11px 18px",fontWeight:700,fontSize:sm?12:14,cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",opacity:disabled?0.7:1,fontFamily:font,transition:"all 0.15s",lineHeight:1.3,...st}}>{children}</button>;}
 function Card({children,style:st={},onClick}){return <div onClick={onClick} style={{background:C.card,borderRadius:16,padding:16,boxShadow:C.shadow,border:`1px solid ${C.border}`,cursor:onClick?"pointer":"default",transition:"all 0.15s",fontFamily:font,...st}}>{children}</div>;}
-function Inp({value,onChange,placeholder,type="text",style:st={},pfx}){
+function Inp({value,onChange,placeholder,type="text",style:st={},pfx,onKeyDown}){
   return(<div style={{position:"relative",display:"flex",alignItems:"center"}}>
     {pfx&&<span style={{position:"absolute",left:12,color:C.textMuted,fontSize:15,pointerEvents:"none"}}>{pfx}</span>}
-    <input value={value} onChange={e=>onChange(e.target.value)} type={type} placeholder={placeholder} style={{width:"100%",padding:"10px 14px",paddingLeft:pfx?38:14,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",background:"white",color:C.text,fontFamily:font,boxSizing:"border-box",...st}}/>
+    <input value={value} onChange={e=>onChange(e.target.value)} onKeyDown={onKeyDown} type={type} placeholder={placeholder} style={{width:"100%",padding:"10px 14px",paddingLeft:pfx?38:14,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:14,outline:"none",background:"white",color:C.text,fontFamily:font,boxSizing:"border-box",...st}}/>
   </div>);}
 function MoneyInput({value,onChange,placeholder,style:st={}}){
   const display=value?Number(value).toLocaleString("vi-VN"):"";
@@ -314,6 +315,106 @@ function Modal({onClose,children,fullBottom=false}){
 function ModalHeader({title,onClose}){return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontWeight:800,fontSize:17,color:C.text}}>{title}</div><button onClick={onClose} style={{background:C.divider,border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:14,fontWeight:700,color:C.textSec,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>);}
 function Pills({options,value,onChange,teal=false}){return(<div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}}>{options.map(o=><button key={o} onClick={()=>onChange(o)} style={{flexShrink:0,padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",background:value===o?(teal?C.teal:C.blue):C.divider,color:value===o?"white":C.textSec,fontWeight:value===o?700:500,fontSize:12,fontFamily:font,transition:"all 0.15s"}}>{o}</button>)}</div>);}
 
+/* ── AVATAR ──────────────────────────────────────────────── */
+const AVATAR_COLORS=['#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#F97316','#EF4444','#14B8A6','#84CC16'];
+const EMOJI_AVATARS=['🐱','🐶','🦊','🐻','🐼','🐨','🐯','🦁','🐸','🐵','🦋','🌸','🌺','🌻','🌹','🍀','⭐','🌙','☀️','🎈','💎','👑','🎀','🌈','🏄','🎸','🍕','🎯','🚀','💫'];
+
+function getAvatarColor(id=''){
+  let h=0; for(let ch of String(id)) h=(h*31+ch.charCodeAt(0))%AVATAR_COLORS.length;
+  return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length];
+}
+function getInitials(ten=''){
+  return (ten||'?').split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';
+}
+
+function Avatar({user={},size=36,style:st={},onClick}){
+  const av = user.avatar || avatarCache.get(user.id||'') || '';
+  const isPhoto = av && av.startsWith('data:');
+  const isEmoji = av && !isPhoto;
+  const bg = getAvatarColor(user.id||user.ten||'');
+
+  if(isPhoto) return(
+    <div onClick={onClick} style={{width:size,height:size,borderRadius:'50%',overflow:'hidden',
+      flexShrink:0,cursor:onClick?'pointer':'default',boxShadow:'0 1px 4px rgba(0,0,0,0.15)',...st}}>
+      <img src={av} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>
+    </div>
+  );
+  return(
+    <div onClick={onClick} style={{width:size,height:size,borderRadius:'50%',flexShrink:0,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      background:isEmoji?'#EEF2FF':bg,
+      fontSize:isEmoji?size*0.56:size*0.38,fontWeight:800,color:'white',
+      letterSpacing:-0.5,cursor:onClick?'pointer':'default',
+      boxShadow:'0 1px 4px rgba(0,0,0,0.15)',userSelect:'none',...st}}>
+      {isEmoji?av:getInitials(user.ten)}
+    </div>
+  );
+}
+
+// Resize image to square, return base64 JPEG
+function resizeImage(file, size=120){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=size; canvas.height=size;
+        const ctx=canvas.getContext('2d');
+        const min=Math.min(img.width,img.height);
+        const sx=(img.width-min)/2, sy=(img.height-min)/2;
+        ctx.drawImage(img,sx,sy,min,min,0,0,size,size);
+        resolve(canvas.toDataURL('image/jpeg',0.75));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function AvatarPicker({current,onSelect,onClose}){
+  const [uploading,setUploading]=useState(false);
+  const fileRef=useRef(null);
+
+  const handleFile=async(e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    setUploading(true);
+    try{ const b64=await resizeImage(file,120); onSelect(b64); }
+    catch(err){ console.error(err); }
+    setUploading(false);
+  };
+
+  return(
+    <Modal onClose={onClose}>
+      <ModalHeader title="🎨 Chọn avatar" onClose={onClose}/>
+      {/* Upload ảnh từ máy */}
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleFile}
+        style={{display:'none'}} capture="user"/>
+      <button onClick={()=>fileRef.current?.click()}
+        style={{width:'100%',padding:'12px',borderRadius:12,border:`2px dashed ${C.blue}`,
+          background:C.blueLight,color:C.blue,fontWeight:700,fontSize:14,cursor:'pointer',
+          fontFamily:font,display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:14}}>
+        {uploading?'⏳ Đang xử lý...':'📷 Chọn ảnh từ máy'}
+      </button>
+      {/* Emoji grid */}
+      <div style={{fontSize:12,color:C.textMuted,fontWeight:600,marginBottom:8}}>Hoặc chọn emoji:</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:14}}>
+        {EMOJI_AVATARS.map(e=>(
+          <button key={e} onClick={()=>onSelect(e)}
+            style={{fontSize:26,background:current===e?C.blueLight:'transparent',
+              border:`2px solid ${current===e?C.blue:'transparent'}`,
+              borderRadius:10,padding:'5px 0',cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              transform:current===e?'scale(1.15)':'scale(1)',transition:'all 0.15s'}}>
+            {e}
+          </button>
+        ))}
+      </div>
+      <Btn onClick={()=>onSelect('')} outline color={C.textSec} full>🔄 Dùng chữ cái tên</Btn>
+    </Modal>
+  );
+}
+
 /* ── GSGuide ─────────────────────────────────────────────────── */
 function GSGuide({onClose}){
   const [copied,setCopied]=useState(false);const [step,setStep]=useState(1);
@@ -321,7 +422,7 @@ function GSGuide({onClose}){
   const steps=[
     {n:1,title:"Tạo Google Sheet",icon:"📊",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:12,lineHeight:1.7}}>Tạo Google Sheet mới → mở <b>Extensions → Apps Script</b></p><a href="https://sheets.new" target="_blank" style={{display:"flex",alignItems:"center",gap:8,background:C.greenLight,color:C.green,padding:"10px 14px",borderRadius:10,textDecoration:"none",fontWeight:700,fontSize:13}}>📊 Tạo Google Sheet mới →</a></div>},
     {n:2,title:"Dán code Apps Script",icon:"📋",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:10,lineHeight:1.7}}>Xoá code cũ, dán toàn bộ code bên dưới, bấm <b>Ctrl+S</b>.</p><div style={{position:"relative"}}><pre style={{background:"#1E293B",color:"#94A3B8",padding:"12px 14px",borderRadius:10,fontSize:11,lineHeight:1.6,overflowX:"auto",maxHeight:180,overflowY:"auto",fontFamily:"monospace",whiteSpace:"pre-wrap"}}>{APPS_SCRIPT_CODE.slice(0,400)}...</pre><button onClick={copyCode} style={{position:"absolute",top:8,right:8,background:copied?C.green:C.blue,color:"white",border:"none",borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:font}}>{copied?"✅ Đã copy!":"📋 Copy"}</button></div></div>},
-    {n:3,title:"Chạy initializeSheets()",icon:"▶️",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:10,lineHeight:1.7}}>Chọn hàm <code style={{background:C.divider,padding:"1px 6px",borderRadius:4}}>initializeSheets</code> → bấm <b>▶ Run</b>. Hàm tự tạo 5 sheets.</p><div style={{background:C.blueLight,borderRadius:10,padding:"10px 12px"}}>{[["TaiKhoan","Tài khoản"],["SanPham","Sản phẩm"],["DonHang","Đơn hàng"],["ChiTietDon","Chi tiết đơn"],["CongNo","Công nợ"]].map(([s,l])=><div key={s} style={{fontSize:12,color:C.textSec,padding:"3px 0"}}>• <b style={{color:C.text}}>{s}</b> — {l}</div>)}</div></div>},
+    {n:3,title:"Chạy initializeSheets()",icon:"▶️",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:10,lineHeight:1.7}}>Chọn hàm <code style={{background:C.divider,padding:"1px 6px",borderRadius:4}}>initializeSheets</code> → bấm <b>▶ Run</b>. Hàm tự tạo 5 sheets.</p><div style={{background:C.blueLight,borderRadius:10,padding:"10px 12px",marginBottom:10}}>{[["TaiKhoan","Tài khoản (có cột avatar)"],["SanPham","Sản phẩm"],["DonHang","Đơn hàng"],["ChiTietDon","Chi tiết đơn"],["CongNo","Công nợ"]].map(([s,l])=><div key={s} style={{fontSize:12,color:C.textSec,padding:"3px 0"}}>• <b style={{color:C.text}}>{s}</b> — {l}</div>)}</div><div style={{background:C.orangeLight,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.orange,fontWeight:600}}><b>Đã có sheet cũ?</b> Mở sheet <b>TaiKhoan</b> → chọn cột H → chuột phải → Insert 1 column left → nhập "avatar" vào ô H1. Sau đó chạy lại code mới.</div></div>},
     {n:4,title:"Deploy Web App",icon:"🚀",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:10,lineHeight:1.7}}>Bấm <b>Deploy → New deployment → Web App</b>:</p>{[["Execute as","Me"],["Who has access","Anyone"]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:C.divider,borderRadius:8,marginBottom:6,fontSize:13}}><span style={{color:C.textSec}}>{l}</span><span style={{fontWeight:700,color:C.text}}>{v}</span></div>)}</div>},
     {n:5,title:"Nhập URL vào app",icon:"🔗",content:<div><p style={{fontSize:13,color:C.textSec,marginBottom:10,lineHeight:1.7}}>Copy <b>Web App URL</b> → dán vào <b>⚙️ Cấu hình</b> ở màn đăng nhập hoặc Tab Hồ Sơ.</p><div style={{background:C.orangeLight,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.orange,fontWeight:600,marginBottom:8}}>⚠️ Lần đầu cần cấp Authorization → chọn "Allow"</div><div style={{background:C.greenLight,borderRadius:10,padding:"10px 12px",fontSize:12,color:C.green,fontWeight:600}}>✅ Sau khi kết nối, dữ liệu lưu thẳng vào Google Sheet!</div></div>},
   ];
@@ -376,7 +477,7 @@ function Login({allUsers,onLogin,onSaveUrl,scriptUrl,loadingAccounts=false}){
       <h2 style={{margin:"0 0 20px",fontSize:19,fontWeight:800,color:C.text,textAlign:"center"}}>Đăng nhập</h2>
       <div style={{marginBottom:12}}><Inp value={u} onChange={v=>{setU(v);setErr("");}} placeholder="Tên đăng nhập" pfx="👤"/></div>
       <div style={{marginBottom:10,position:"relative"}}>
-        <Inp value={p} onChange={v=>{setP(v);setErr("");}} placeholder="Mật khẩu" type={showP?"text":"password"} pfx="🔑"/>
+        <Inp value={p} onChange={v=>{setP(v);setErr("");}} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="Mật khẩu" type={showP?"text":"password"} pfx="🔑"/>
         <button onClick={()=>setShowP(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.textMuted}}>{showP?"🙈":"👁️"}</button>
       </div>
       <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,cursor:"pointer",fontSize:13,color:C.textSec}}>
@@ -1029,6 +1130,8 @@ function SellTab({products,customers,setOrders,setDebts,api}){
         </div>
         <div style={{background:"rgba(255,255,255,0.15)",borderRadius:12,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
           <span style={{color:"white",fontSize:13,fontWeight:600,whiteSpace:"nowrap"}}>Khách:</span>
+          {/* Avatar KH đang chọn */}
+          {(()=>{const kh=selKH!=="le"&&customers.find(x=>x.id===selKH); return kh?<Avatar user={kh} size={24} style={{border:"1.5px solid rgba(255,255,255,0.7)",marginRight:2}}/>:null;})()}
           <select value={selKH} onChange={e=>setSelKH(e.target.value)} style={{flex:1,background:"transparent",border:"none",color:"white",fontWeight:700,fontSize:13,outline:"none",fontFamily:font,cursor:"pointer"}}>
             <option value="le">Khách lẻ</option>
             {customers.map(k=><option key={k.id} value={k.id}>{k.ten}</option>)}
@@ -1357,10 +1460,13 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
     return(
       <Card onClick={()=>setDetail(d)} style={{padding:"12px 14px",
         border:`1.5px solid ${isOwe?C.redLight:isCredit?"#bbf7d0":C.border}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:2}}>{d.ten}</div>
-            <div style={{fontSize:12,color:C.textMuted}}>GD cuối: {fmtDate(d.last)}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
+            <Avatar user={{id:d.maKH,ten:d.ten,avatar:customers.find(x=>x.id===d.maKH)?.avatar||""}} size={40}/>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.ten}</div>
+              <div style={{fontSize:12,color:C.textMuted}}>GD cuối: {fmtDate(d.last)}</div>
+            </div>
           </div>
           <div style={{textAlign:"right"}}>
             {isOwe&&<>
@@ -1571,35 +1677,37 @@ function CustomersTab({customers,setCustomers,orders,debts,api}){
           const s=getStats(kh.id);
           return(
             <Card key={kh.id} style={{padding:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:44,height:44,borderRadius:"50%",background:`linear-gradient(135deg,${C.blue},${C.teal})`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:800,fontSize:18,flexShrink:0}}>{kh.ten[0].toUpperCase()}</div>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                <Avatar user={kh} size={44}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:800,fontSize:15,color:C.text}}>{kh.ten}</div>
-                  <div style={{fontSize:12,color:C.textMuted}}>@{kh.username}{kh.sdt&&` • ${kh.sdt}`}</div>
-                  <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-                    <span style={{fontSize:11,color:C.blue,fontWeight:600}}>📦 {s.orders} đơn</span>
-                    <span style={{fontSize:11,color:C.green,fontWeight:600}}>💰 {fmtK(s.tongTien)}</span>
-                    {s.conNo>0&&<span style={{fontSize:11,color:C.red,fontWeight:600}}>⚠️ Nợ {fmtK(s.conNo)}</span>}
-                  </div>
+                  <div style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:1}}>{kh.ten}</div>
+                  <div style={{fontSize:12,color:C.textMuted}}>@{kh.username}{kh.sdt?` · ${kh.sdt}`:""}</div>
                 </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                {[[s.orders+"","Đơn","📦",C.blue],[fmt(s.tongTien),"Doanh thu","💰",C.green],[fmt(s.conNo),"Còn nợ","⚠️",s.conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(
+                  <div key={l} style={{background:C.divider,borderRadius:10,padding:"8px 4px",textAlign:"center"}}>
+                    <div style={{fontSize:15}}>{ic}</div>
+                    <div style={{fontWeight:800,fontSize:12,color:c,marginTop:2}}>{v}</div>
+                    <div style={{fontSize:10,color:C.textMuted}}>{l}</div>
+                  </div>
+                ))}
               </div>
             </Card>
           );
         })}
+        {customers.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>👥</div><div style={{fontWeight:600,marginTop:8}}>Chưa có khách hàng nào</div></div>}
       </div>
       {showAdd&&(
         <Modal onClose={()=>setShowAdd(false)}>
-          <ModalHeader title="Thêm khách hàng mới" onClose={()=>setShowAdd(false)}/>
-          {[["Họ tên *","ten","text"],["Tên đăng nhập *","username","text"],["Mật khẩu *","password","password"],["Số điện thoại","sdt","tel"]].map(([l,k,t])=>(
+          <ModalHeader title="➕ Thêm khách hàng" onClose={()=>setShowAdd(false)}/>
+          {[["ten","Họ tên *","text"],["username","Tên đăng nhập *","text"],["password","Mật khẩu *","password"],["sdt","Số điện thoại","tel"]].map(([k,lb,t])=>(
             <div key={k} style={{marginBottom:10}}>
-              <div style={{fontSize:12,color:C.textSec,fontWeight:600,marginBottom:4}}>{l}</div>
-              <Inp value={form[k]} onChange={v=>setForm(f=>({...f,[k]:v}))} placeholder={l} type={t}/>
+              <div style={{fontSize:12,color:C.textMuted,fontWeight:600,marginBottom:4}}>{lb}</div>
+              <Inp value={form[k]} onChange={v=>setForm(f=>({...f,[k]:v}))} placeholder={lb} type={t}/>
             </div>
           ))}
-          <div style={{display:"flex",gap:8,marginTop:8}}>
-            <Btn onClick={save} color={C.green} style={{flex:1}}>✅ Lưu</Btn>
-            <Btn onClick={()=>setShowAdd(false)} outline color={C.textSec} style={{flex:1}}>Huỷ</Btn>
-          </div>
+          <Btn onClick={save} color={C.blue} full>✅ Thêm khách hàng</Btn>
         </Modal>
       )}
       <Toast msg={toast}/>
@@ -1607,8 +1715,8 @@ function CustomersTab({customers,setCustomers,orders,debts,api}){
   );
 }
 
-/* ── SHOP TAB (customer) ────────────────────────────────────── */
-function ShopTab({products,currentUser,setOrders,setDebts,api}){
+/* ── SHOP TAB (Customer) ─────────────────────────────────────── */
+function ShopTab({products,currentUser,setOrders,api}){
   const [search,setSearch]=useState(""); const [nhom,setNhom]=useState("Tất cả");
   const [cart,setCart]=useState({}); const [toast,setToast]=useState(""); const [showCart,setShowCart]=useState(false);
   const [busyOrder,setBusyOrder]=useState(false);
@@ -1628,7 +1736,9 @@ function ShopTab({products,currentUser,setOrders,setDebts,api}){
     setBusyOrder(true);
     try{
       const id=genId("DH");
-      const o={id,maKH:currentUser.id,tenKH:currentUser.ten,ngay:nowISO(),trangThai:"pending",tongTien:total,tongVon:cartProds.reduce((a,p)=>a+p.von*(cart[p.id]||0),0),items:cartProds.map(p=>({maSP:p.id,ten:p.ten,nhom:p.nhom||"",sl:cart[p.id],gia:p.gia,von:p.von}))};
+      const o={id,maKH:currentUser.id,tenKH:currentUser.ten,ngay:nowISO(),trangThai:"pending",tongTien:total,
+        tongVon:cartProds.reduce((a,p)=>a+p.von*(cart[p.id]||0),0),
+        items:cartProds.map(p=>({maSP:p.id,ten:p.ten,nhom:p.nhom||"",sl:cart[p.id],gia:p.gia,von:p.von}))};
       if(api) await api.post("createOrder",o);
       setOrders(os=>[o,...os]); setCart({}); setShowCart(false);
       notify("✅ Đặt hàng thành công! Chờ xác nhận.");
@@ -1637,58 +1747,65 @@ function ShopTab({products,currentUser,setOrders,setDebts,api}){
 
   return(
     <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
-      <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 16px 10px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div>
-            <div style={{color:"white",fontWeight:800,fontSize:17}}>Xin chào, {currentUser.ten}! 👋</div>
-            <div style={{color:"rgba(255,255,255,0.75)",fontSize:12}}>Chọn sản phẩm bạn muốn đặt</div>
-          </div>
-          {totalQty>0&&(
-            <button onClick={()=>setShowCart(true)} style={{background:"white",color:C.blue,border:"none",borderRadius:20,padding:"7px 14px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font,boxShadow:C.shadowMd,display:"flex",alignItems:"center",gap:6}}>
-              <span style={{background:C.blue,color:"white",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900}}>{totalQty}</span>
-              {fmt(total)}
-            </button>
-          )}
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 12px",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{flex:1}}>
+          <div style={{color:"white",fontWeight:800,fontSize:17}}>🛍 Mua hàng</div>
         </div>
+        {totalQty>0&&(
+          <button onClick={()=>setShowCart(true)} style={{background:"white",color:C.blue,border:"none",borderRadius:20,padding:"6px 14px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font,display:"flex",alignItems:"center",gap:6}}>
+            🛒 <span style={{background:C.blue,color:"white",borderRadius:"50%",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>{totalQty}</span>
+            {fmt(total)}
+          </button>
+        )}
         <div style={{position:"relative",flex:1}}>
-            <Inp value={search} onChange={setSearch} placeholder="🔍 Tìm sản phẩm..." style={{background:"rgba(255,255,255,0.92)",border:"none",paddingRight:search?36:14}}/>
-            {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(100,116,139,0.25)",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#475569",fontWeight:700}}>✕</button>}
-          </div>
+          <Inp value={search} onChange={setSearch} placeholder="🔍 Tìm sản phẩm..." style={{background:"rgba(255,255,255,0.92)",border:"none",paddingRight:search?36:14}}/>
+          {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(100,116,139,0.25)",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#475569",fontWeight:700}}>✕</button>}
+        </div>
       </div>
       {/* Category filter */}
       <div style={{padding:"8px 12px",background:C.card,borderBottom:`1px solid ${C.divider}`}}>
         <Pills options={nhomList} value={nhom} onChange={setNhom}/>
       </div>
+      {/* Product list */}
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
         {filtered.map(p=>{
           const qty=cart[p.id]||0;
           return(
-            <div key={p.id} style={{background:C.card,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,border:`1.5px solid ${qty>0?C.blue:C.border}`,boxShadow:qty>0?`0 0 0 3px ${C.blueLight}`:C.shadow,transition:"all 0.15s"}}>
+            <div key={p.id} style={{background:C.card,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:C.shadow}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div>
-                <div style={{fontWeight:900,fontSize:15,color:C.blue,marginTop:2}}>{fmt(p.gia)}</div>
+                <div style={{fontSize:13,color:C.blue,fontWeight:800,marginTop:2}}>{fmt(p.gia)}</div>
               </div>
-              {qty>0?(
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <button onClick={()=>dec(p)} style={{width:30,height:30,borderRadius:"50%",border:"none",background:"#E2E8F0",cursor:"pointer",fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                  <span style={{fontWeight:800,fontSize:15,color:C.blue,minWidth:20,textAlign:"center"}}>{qty}</span>
-                  <button onClick={()=>add(p)} style={{width:30,height:30,borderRadius:"50%",border:"none",background:C.green,color:"white",cursor:"pointer",fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              {qty===0
+                ?<button onClick={()=>add(p)} style={{background:C.blue,color:"white",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:20,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                :<div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <button onClick={()=>dec(p)} style={{background:"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                  <span style={{fontWeight:800,color:C.blue,minWidth:20,textAlign:"center",fontSize:16}}>{qty}</span>
+                  <button onClick={()=>add(p)} style={{background:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                 </div>
-              ):(
-                <button onClick={()=>add(p)} style={{width:34,height:34,borderRadius:"50%",border:"none",background:C.blue,color:"white",fontSize:20,cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 2px 8px ${C.blue}40`}}>+</button>
-              )}
+              }
             </div>
           );
         })}
-        {filtered.length===0&&<div style={{textAlign:"center",padding:32,color:C.textMuted}}><div style={{fontSize:36}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
+        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
       </div>
+      {/* Cart modal */}
       {showCart&&(
         <Modal onClose={()=>setShowCart(false)} fullBottom>
-          <ModalHeader title="🛍 Đơn đặt hàng" onClose={()=>setShowCart(false)}/>
+          <ModalHeader title="🛒 Giỏ hàng" onClose={()=>setShowCart(false)}/>
           {cartProds.map(p=>(
-            <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}>
-              <div><div style={{fontWeight:700,fontSize:14}}>{p.ten}</div><div style={{fontSize:12,color:C.textSec}}>{fmt(p.gia)} × {cart[p.id]}</div></div>
-              <div style={{fontWeight:800,color:C.blue,fontSize:15}}>{fmt(p.gia*cart[p.id])}</div>
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div>
+                <div style={{fontSize:13,color:C.blue,fontWeight:700}}>{fmt(p.gia)} × {cart[p.id]}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button onClick={()=>dec(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:"#E2E8F0",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                <span style={{fontWeight:800,color:C.blue,minWidth:20,textAlign:"center"}}>{cart[p.id]}</span>
+                <button onClick={()=>add(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:C.green,color:"white",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              </div>
+              <div style={{fontWeight:800,color:C.blue,minWidth:60,textAlign:"right"}}>{fmt(p.gia*cart[p.id])}</div>
             </div>
           ))}
           <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",marginBottom:12,borderTop:`2px solid ${C.divider}`}}>
@@ -1759,19 +1876,50 @@ function MyOrdersTab({orders,currentUser}){
 }
 
 /* ── CUSTOMER PROFILE ───────────────────────────────────────── */
-function CustomerProfile({currentUser,onLogout,orders,debts}){
+function CustomerProfile({currentUser,onLogout,onUpdateUser,orders,debts,api}){
+  const [showPicker,setShowPicker]=useState(false);
+  const [saving,setSaving]=useState(false);
   const mine=orders.filter(o=>o.maKH===currentUser.id);
   const myDebts=debts.filter(d=>d.maKH===currentUser.id);
   const conNo=Math.max(0,myDebts.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0));
   const tongMua=mine.filter(o=>o.trangThai==="done").reduce((a,o)=>a+o.tongTien,0);
+
+  const saveAvatar=async(emoji)=>{
+    // 1. Lưu cache localStorage ngay lập tức (hiển thị ngay)
+    avatarCache.set(currentUser.id, emoji);
+    const updated={...currentUser,avatar:emoji};
+    onUpdateUser(updated);
+    setShowPicker(false);
+    // 2. Sync lên GS bất đồng bộ (không block UI)
+    setSaving(true);
+    try{
+      if(api) await api.post("updateUser",{id:currentUser.id,ten:currentUser.ten,sdt:currentUser.sdt||"",avatar:emoji});
+    }catch(e){console.error("Lỗi sync avatar:",e);}
+    setSaving(false);
+  };
+
   return(
     <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
+      {showPicker&&<AvatarPicker current={currentUser.avatar||""} onSelect={saveAvatar} onClose={()=>setShowPicker(false)}/>}
+      {/* Header */}
       <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"30px 20px 40px",textAlign:"center"}}>
-        <div style={{width:72,height:72,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,margin:"0 auto 12px",border:"3px solid rgba(255,255,255,0.5)"}}>{currentUser.ten[0].toUpperCase()}</div>
+        {/* Avatar với nút chỉnh sửa */}
+        <div style={{position:"relative",display:"inline-block",marginBottom:12}}>
+          <Avatar user={currentUser} size={80} style={{border:"3px solid rgba(255,255,255,0.6)",margin:"0 auto"}}/>
+          <button onClick={()=>setShowPicker(true)}
+            style={{position:"absolute",bottom:0,right:-4,width:26,height:26,borderRadius:"50%",
+              background:"white",border:`2px solid ${C.blue}`,cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,
+              boxShadow:"0 2px 6px rgba(0,0,0,0.2)"}}>
+            ✏️
+          </button>
+        </div>
         <div style={{color:"white",fontWeight:900,fontSize:20}}>{currentUser.ten}</div>
         <div style={{color:"rgba(255,255,255,0.75)",fontSize:13,marginTop:4}}>@{currentUser.username}</div>
         {currentUser.sdt&&<div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>📞 {currentUser.sdt}</div>}
+        {saving&&<div style={{color:"rgba(255,255,255,0.8)",fontSize:11,marginTop:6}}>⏳ Đang lưu...</div>}
       </div>
+      {/* Stats */}
       <div style={{margin:"-20px 16px 16px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,position:"relative"}}>
         {[[mine.length,"Đơn hàng","📦",C.blue],[fmt(tongMua),"Đã mua","💰",C.green],[fmt(conNo),"Còn nợ","⚠️",conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(
           <div key={l} style={{background:C.card,borderRadius:14,padding:"12px 8px",textAlign:"center",boxShadow:C.shadowMd}}>
@@ -1781,6 +1929,7 @@ function CustomerProfile({currentUser,onLogout,orders,debts}){
           </div>
         ))}
       </div>
+      {/* Info */}
       <div style={{margin:"0 16px"}}>
         <Card style={{padding:0,overflow:"hidden",marginBottom:14}}>
           {[["👤","Họ tên",currentUser.ten],["🔑","Tài khoản",currentUser.username],["📞","Số điện thoại",currentUser.sdt||"—"]].map(([ic,l,v])=>(
@@ -1789,12 +1938,33 @@ function CustomerProfile({currentUser,onLogout,orders,debts}){
               <div style={{flex:1}}><div style={{fontSize:11,color:C.textMuted,fontWeight:600}}>{l}</div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{v}</div></div>
             </div>
           ))}
+          {/* Avatar row */}
+          <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px"}}>
+            <span style={{fontSize:18}}>🖼️</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:C.textMuted,fontWeight:600}}>Avatar</div>
+              <div style={{fontWeight:700,fontSize:14,color:C.text}}>{currentUser.avatar?"Emoji tuỳ chỉnh":"Chữ cái tên"}</div>
+            </div>
+            <button onClick={()=>setShowPicker(true)}
+              style={{background:C.blueLight,color:C.blue,border:"none",borderRadius:8,
+                padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:font}}>
+              Đổi avatar
+            </button>
+          </div>
         </Card>
         <button onClick={onLogout} style={{width:"100%",padding:14,borderRadius:14,border:`2px solid ${C.red}`,background:"transparent",color:C.red,fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:font}}>🚪 Đăng xuất</button>
       </div>
     </div>
   );
 }
+
+/* ── AVATAR CACHE (localStorage) ───────────────────────────── */
+const avatarCache = {
+  get:(id)=>{ try{return JSON.parse(localStorage.getItem("av_"+id)||'""');}catch{return "";} },
+  set:(id,v)=>{ try{localStorage.setItem("av_"+id,JSON.stringify(v));}catch{} },
+  getAll:(ids)=>{ const m={}; ids.forEach(id=>{const v=avatarCache.get(id);if(v)m[id]=v;}); return m; },
+};
+
 
 /* ── ROOT ───────────────────────────────────────────────────── */
 function App(){
@@ -1829,7 +1999,14 @@ function App(){
     setLoadingAccounts(true);
     api.get("getTaiKhoan").then(r=>{
       if(r?.data?.length){
-        setCustomers(r.data.filter(u=>u.loai==="customer"));
+        const custs = r.data.filter(u=>u.loai==="customer").map(u=>({
+          ...u,
+          // GS avatar ưu tiên; nếu không có thì lấy từ localStorage cache
+          avatar: u.avatar || avatarCache.get(u.id) || ""
+        }));
+        // Cập nhật cache với avatar mới từ GS
+        custs.forEach(u=>{ if(u.avatar) avatarCache.set(u.id, u.avatar); });
+        setCustomers(custs);
       }
     }).catch(()=>{}).finally(()=>setLoadingAccounts(false));
   },[api]);
@@ -1870,7 +2047,7 @@ function App(){
       {tab==="shop"&&<ShopTab products={products} currentUser={user} setOrders={setOrders} setDebts={setDebts} api={api}/>}
       {tab==="orders"&&<MyOrdersTab orders={orders} currentUser={user}/>}
       {tab==="debt"&&<DebtTab customers={customers} debts={debts} setDebts={setDebts} api={api} role="customer" currentUser={user}/>}
-      {tab==="profile"&&<CustomerProfile currentUser={user} onLogout={logout} orders={orders} debts={debts}/>}
+      {tab==="profile"&&<CustomerProfile currentUser={user} onLogout={logout} onUpdateUser={updateUser} orders={orders} debts={debts} api={api}/>}
       <CustomerNav active={tab} onChange={setTab}/>
     </div>
   );
