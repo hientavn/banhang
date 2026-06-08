@@ -493,15 +493,7 @@ function Login({allUsers,onLogin,onSaveUrl,scriptUrl,loadingAccounts=false}){
         <span onClick={()=>setShowGuide(true)} style={{fontSize:12,color:C.blue,cursor:"pointer",fontWeight:700}}>📖 Hướng dẫn</span>
       </div>
       {showUrl&&<div style={{marginTop:10}}><Inp value={url} onChange={setUrl} placeholder="Apps Script URL..."/><div style={{fontSize:11,color:C.textMuted,marginTop:4}}>Để trống = dùng dữ liệu mẫu</div></div>}
-      <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${C.divider}`}}>
-        <div style={{fontSize:11,color:C.textMuted,fontWeight:700,marginBottom:8,letterSpacing:0.5}}>TÀI KHOẢN THỬ NGHIỆM</div>
-        {[{u:"seller",p:"seller123",l:"👨‍💼 Người bán"},{u:"hung",p:"123456",l:"🛍 Anh Hùng (KH)"},{u:"mai",p:"123456",l:"🛍 Chị Mai (KH)"}].map(a=>(
-          <div key={a.u} onClick={()=>{setU(a.u);setP(a.p);setErr("");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,background:u===a.u?C.blueLight:"transparent",border:`1px solid ${u===a.u?C.blue:C.border}`,transition:"all 0.15s"}}>
-            <span style={{fontSize:13,fontWeight:600,color:C.text}}>{a.l}</span>
-            <span style={{fontSize:11,color:C.textMuted,fontFamily:"monospace"}}>{a.u}/{a.p}</span>
-          </div>
-        ))}
-      </div>
+
     </div>
   </div>);}
 
@@ -2024,7 +2016,9 @@ function App(){
   const setUser=(u)=>{setUserRaw(u);if(u)lsSet("session",u);else{try{localStorage.removeItem("session");}catch{}}};
 
   const api=useMemo(()=>scriptUrl?createApi(scriptUrl):null,[scriptUrl]);
-  const allUsers=useMemo(()=>[SELLER,...customers],[customers]);
+  // allUsers: dùng toàn bộ tài khoản GS khi có, fallback mock khi chưa kết nối
+  const [allGsUsers,setAllGsUsers]=useState([]); // tất cả tài khoản từ GS
+  const allUsers=useMemo(()=>allGsUsers.length>0?allGsUsers:[SELLER,...customers],[allGsUsers,customers]);
   const login=useCallback((u)=>{setUser(u);setTab(u.loai==="seller"?"sell":"shop");},[]);
     const logout=()=>{setUser(null);setTab("");};
   const updateUser=(updated)=>setUser(updated);
@@ -2037,9 +2031,11 @@ function App(){
     setLoadingAccounts(true);
     api.get("getTaiKhoan").then(r=>{
       if(r?.data?.length){
+        // Lưu toàn bộ (cả seller + customer) để dùng cho đăng nhập
+        setAllGsUsers(r.data);
+        // Chỉ lọc customer cho danh sách khách hàng trong seller UI
         const custs = r.data.filter(u=>u.loai==="customer").map(u=>({
           ...u,
-          // GS avatar ưu tiên; nếu không có thì lấy từ localStorage cache
           avatar: u.avatar || avatarCache.get(u.id) || ""
         }));
         // Cập nhật cache với avatar mới từ GS
