@@ -939,13 +939,21 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
     if(busyApprove) return; setBusyApprove(true);
     try{
       const o=orders.find(x=>x.id===id); if(!o) return;
-      if(api) await api.post("approveOrder",{id}).catch(()=>{});
+      const debtId=genId("CN");
+      // 1 lần gọi duy nhất — GAS tự cập nhật DonHang + ghi CongNo
+      if(api){
+        const r=await api.post("approveOrder",{
+          id, maKH:o.maKH, tenKH:o.tenKH, tongTien:o.tongTien, debtId
+        });
+        if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);
+      }
       setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done"}:x));
-      const de={id:genId("CN"),maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`,maDon:id};
-      // Truyền đủ thông tin để GAS ghi CongNo trực tiếp trong approveOrder
-      if(api) await api.post("approveOrder",{id,maKH:o.maKH,tenKH:o.tenKH,tongTien:o.tongTien,debtId:de.id}).catch(()=>{});
-      setDebts&&setDebts(ds=>[de,...ds]);
-      notify("✅ Đã duyệt!");setSel(null);
+      // Cập nhật local debts nếu không phải khách lẻ
+      if(o.maKH&&o.maKH!=="le"){
+        const de={id:debtId,maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`,maDon:id};
+        setDebts&&setDebts(ds=>[de,...ds]);
+      }
+      notify("✅ Đã duyệt!"); setSel&&setSel(null);
     }finally{setBusyApprove(false);}
   };
 
@@ -1221,7 +1229,7 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
       const o={id,maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",ngay:nowISO(),trangThai:mode==="sell"?"done":"pending",tongTien:total,tongVon:von,items};
       if(api) await api.post("createOrder",o);
       setOrders(os=>[o,...os]);
-      if(mode==="sell"){const de={id:genId("CN"),maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${id}`,maDon:id};if(api) await api.post("addDebt",de).catch(()=>{});setDebts(ds=>[de,...ds]);notify("✅ Bán hàng thành công!");}else{notify("✅ Đặt hàng thành công!");}
+      if(mode==="sell"){const de={id:genId("CN"),maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${id}`,maDon:id};if(api){ const r=await api.post("addDebt",de); if(r?.error) console.error("addDebt error:",r.error,de); }setDebts(ds=>[de,...ds]);notify("✅ Bán hàng thành công!");}else{notify("✅ Đặt hàng thành công!");}
       reset();
     }catch(e){notify("❌ Lỗi: "+e.message);}finally{setBusy(false);}
   };
@@ -1448,11 +1456,21 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
     if(busyApprove) return; setBusyApprove(true);
     try{
       const o=orders.find(x=>x.id===id); if(!o) return;
-      if(api) await api.post("approveOrder",{id}).catch(()=>{});
+      const debtId=genId("CN");
+      // 1 lần gọi duy nhất — GAS tự cập nhật DonHang + ghi CongNo
+      if(api){
+        const r=await api.post("approveOrder",{
+          id, maKH:o.maKH, tenKH:o.tenKH, tongTien:o.tongTien, debtId
+        });
+        if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);
+      }
       setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done"}:x));
-      const de={id:genId("CN"),maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`};
-      if(api) await api.post("addDebt",de).catch(()=>{});
-      setDebts(ds=>[de,...ds]); notify("✅ Đã duyệt!"); setSel(null);
+      // Cập nhật local debts nếu không phải khách lẻ
+      if(o.maKH&&o.maKH!=="le"){
+        const de={id:debtId,maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`,maDon:id};
+        setDebts&&setDebts(ds=>[de,...ds]);
+      }
+      notify("✅ Đã duyệt!"); setSel&&setSel(null);
     }finally{setBusyApprove(false);}
   };
   const OCard=({o,ip})=>(
