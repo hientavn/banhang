@@ -1363,31 +1363,27 @@ function InvoiceModal({order,shopName,onClose}){
 
   const doPDF=()=>{
     const w=window.open("","_blank");
-    w.document.write(`<html><head><title>Đơn ${order.id}</title><style>body{font-family:monospace;max-width:320px;margin:20px auto;font-size:13px}table{width:100%;border-collapse:collapse}td{padding:3px 4px}hr{border:1px dashed #000}.tot{font-weight:900}h3{text-align:center;margin:4px 0}</style></head><body>
-      <h3>${shopName}</h3><hr/>
-      <div><b>KH: ${order.tenKH}</b> - ${order.id} - ${fmtDate(order.ngay)}</div><hr/>
-      <table><thead><tr><th>#</th><th>Tên</th><th>SL</th><th>Giá</th><th>T.Tiền</th></tr></thead><tbody>
-      ${(order.items||[]).map((it,i)=>`<tr><td>${i+1}</td><td>${it.ten}</td><td>${it.sl}</td><td>${fmt(it.gia)}</td><td><b>${fmt(it.gia*it.sl)}</b></td></tr>`).join("")}
-      </tbody></table><hr/>
-      <div class="tot">Tổng ${totalSP} SP <span style="float:right">${fmt(order.tongTien)}</span></div>
-      </body></html>`);
+    const rows=(order.items||[]).map((it,i)=>"<tr><td>"+(i+1)+"</td><td>"+it.ten+"</td><td>"+it.sl+"</td><td>"+fmt(it.gia)+"</td><td><b>"+fmt(it.gia*it.sl)+"</b></td></tr>").join("");
+    const html="<html><head><title>Don "+order.id+"</title><style>body{font-family:monospace;max-width:320px;margin:20px auto;font-size:13px}table{width:100%;border-collapse:collapse}td{padding:3px 4px}hr{border:1px dashed #000}.tot{font-weight:900}h3{text-align:center;margin:4px 0}</style></head><body>"
+      +"<h3>"+shopName+"</h3><hr/>"
+      +"<div><b>KH: "+order.tenKH+"</b> - "+order.id+" - "+fmtDate(order.ngay)+"</div><hr/>"
+      +"<table><thead><tr><th>#</th><th>Ten</th><th>SL</th><th>Gia</th><th>T.Tien</th></tr></thead><tbody>"+rows+"</tbody></table><hr/>"
+      +"<div class='tot'>Tong "+totalSP+" SP <span style='float:right'>"+fmt(order.tongTien)+"</span></div>"
+      +"</body></html>";
+    w.document.write(html);
     w.document.close();setTimeout(()=>w.print(),300);
   };
 
   return(
     <Modal onClose={onClose}>
-      {/* Receipt area */}
       <div ref={ref} style={{background:"white",padding:"16px 12px",borderRadius:8,marginBottom:12,border:"1px solid #e0e0e0"}}>
         <div style={{textAlign:"center",marginBottom:10}}>
           <div style={{fontSize:36}}>🏪</div>
           <div style={{fontWeight:900,fontSize:15,color:"#1565C0",marginTop:4}}>{shopName}</div>
           <div style={{borderBottom:"2px solid #333",margin:"8px 0"}}/>
         </div>
-        <div style={{fontSize:12,marginBottom:8}}>
-          <b>KH: {order.tenKH}</b> · {order.id} · {fmtDate(order.ngay)}
-        </div>
+        <div style={{fontSize:12,marginBottom:8}}><b>KH: {order.tenKH}</b> · {order.id} · {fmtDate(order.ngay)}</div>
         <div style={{borderTop:"1px dashed #888",marginBottom:6}}/>
-        {/* Table header */}
         <div style={{display:"grid",gridTemplateColumns:"22px 1fr 28px 46px 52px",fontSize:11,fontWeight:700,color:"#444",padding:"0 2px",marginBottom:4}}>
           <span>#</span><span>Tên</span><span style={{textAlign:"center"}}>SL</span><span style={{textAlign:"right"}}>Đ.Giá</span><span style={{textAlign:"right"}}>T.Tiền</span>
         </div>
@@ -1403,11 +1399,9 @@ function InvoiceModal({order,shopName,onClose}){
         ))}
         <div style={{borderTop:"1px dashed #888",margin:"6px 0"}}/>
         <div style={{display:"flex",justifyContent:"space-between",fontWeight:900,fontSize:14}}>
-          <span>Tổng {totalSP} SP</span>
-          <span style={{color:"#1565C0"}}>{fmt(order.tongTien)}</span>
+          <span>Tổng {totalSP} SP</span><span style={{color:"#1565C0"}}>{fmt(order.tongTien)}</span>
         </div>
       </div>
-      {/* Action buttons */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
         <button onClick={doShare} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🖼️ ẢNH</button>
         <button onClick={doPDF} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#F44336",color:"white",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>📄 PDF</button>
@@ -1418,7 +1412,7 @@ function InvoiceModal({order,shopName,onClose}){
   );
 }
 
-
+/* ── ORDERS TAB ─────────────────────────────────────────────── */
 function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}){
   const [timeF,setTimeF]=useState("today");
   const [doneTimeF,setDoneTimeF]=useState("today");
@@ -1428,8 +1422,6 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
   const [busyApprove,setBusyApprove]=useState(false);
   const [printOrder,setPrintOrder]=useState(null);
   const [invoiceOrder,setInvoiceOrder]=useState(null);
-  const [srcDetail,setSrcDetail]=useState(null); // detail popup cho done summary row
-  const [printData2,setPrintData2]=useState(null);
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
   const filtered=orders.filter(o=>{
     const d=new Date(o.ngay),now=new Date();
@@ -1441,7 +1433,6 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
     return true;
   }).sort((a,b)=>new Date(b.ngay)-new Date(a.ngay));
   const doneList=filtered.filter(o=>o.trangThai==="done");
-  const pendingList=filtered.filter(o=>o.trangThai==="pending");
   const doneFiltered=useMemo(()=>orders.filter(o=>{
     if(o.trangThai!=="done") return false;
     const d=new Date(o.ngay),now=new Date();
@@ -1456,224 +1447,70 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
     return Object.entries(m).sort((a,b)=>b[1].thu-a[1].thu);
   },[doneFiltered]);
   const doneTotals=doneFiltered.reduce((a,o)=>({sl:a.sl+(o.items?.reduce((s,i)=>s+i.sl,0)||0),thu:a.thu+o.tongTien,lai:a.lai+(o.tongTien-o.tongVon)}),{sl:0,thu:0,lai:0});
-  const approve=async(id)=>{
-    if(busyApprove) return; setBusyApprove(true);
-    try{
-      const o=orders.find(x=>x.id===id); if(!o) return;
-      const debtId=genId("CN");
-      // 1 lần gọi duy nhất — GAS tự cập nhật DonHang + ghi CongNo
-      if(api){
-        const r=await api.post("approveOrder",{
-          id, maKH:o.maKH, tenKH:o.tenKH, tongTien:o.tongTien, debtId
-        });
-        if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);
-      }
-      setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done"}:x));
-      // Cập nhật local debts nếu không phải khách lẻ
-      if(o.maKH&&o.maKH!=="le"){
-        const de={id:debtId,maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`,maDon:id};
-        setDebts&&setDebts(ds=>[de,...ds]);
-      }
-      notify("✅ Đã duyệt!"); setSel&&setSel(null);
-    }finally{setBusyApprove(false);}
-  };
-  const OCard=({o,ip})=>(
-    <Card onClick={()=>setSel(o)} style={{padding:"12px 14px",border:`1.5px solid ${ip?C.amber+"44":C.border}`,background:ip?"#FFFBEB":"white"}}>
+  const OCard=({o})=>(
+    <Card onClick={()=>setSel(o)} style={{padding:"12px 14px",border:`1.5px solid ${C.border}`,background:"white"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-        <div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontWeight:800,fontSize:12,color:ip?C.orange:C.blue}}>{o.id}</span><Badge label={ip?"⏳ Chờ":"✅ Đã giao"} color={ip?C.orange:C.green} bg={ip?C.orangeLight:C.greenLight} size={10}/></div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div><div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div></div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontWeight:900,fontSize:16,color:ip?C.orange:C.blue}}>{fmt(o.tongTien)}</div>
-          {ip&&<Btn onClick={e=>{e.stopPropagation();approve(o.id);}} color={C.green} sm disabled={busyApprove} style={{marginTop:4}}>{busyApprove?"...":"✅ Duyệt"}</Btn>}
-          {!ip&&<div style={{fontSize:11,color:C.green,fontWeight:600}}>+{fmt(o.tongTien-o.tongVon)} lãi</div>}
-        </div>
+        <div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span><Badge label="✅ Đã giao" color={C.green} bg={C.greenLight} size={10}/></div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div><div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div></div>
+        <div style={{textAlign:"right"}}><div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div><div style={{fontSize:11,color:C.green,fontWeight:600}}>+{fmt(o.tongTien-o.tongVon)} lãi</div></div>
       </div>
-      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:ip?"#FEF3C7":C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:ip?C.orange:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}
-        {(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}
-      </div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}{(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}</div>
     </Card>
   );
   return(
     <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
       {printOrder&&<PrintModal data={printOrder} onClose={()=>setPrintOrder(null)}/>}
       {invoiceOrder&&<InvoiceModal order={invoiceOrder} shopName={currentUser?.ten||"Cửa Hàng"} onClose={()=>setInvoiceOrder(null)}/>}
-      {/* Done summary table */}
       <div style={{background:C.card,padding:"12px 14px",borderBottom:`1px solid ${C.divider}`}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <div style={{fontWeight:800,fontSize:14,color:C.blue}}>📊 Tổng hợp đã giao</div>
-          <div style={{display:"flex",gap:4}}>
-            {[["today","Hôm nay"],["week","7 ngày"],["month","Tháng"],["all","Tất cả"]].map(([v,l])=>(
-              <button key={v} onClick={()=>setDoneTimeF(v)} style={{padding:"3px 8px",borderRadius:10,border:"none",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:font,background:doneTimeF===v?C.blue:C.divider,color:doneTimeF===v?"white":C.textSec}}>{l}</button>
-            ))}
-          </div>
+          <div style={{display:"flex",gap:4}}>{[["today","Hôm nay"],["week","7 ngày"],["month","Tháng"],["all","Tất cả"]].map(([v,l])=>(<button key={v} onClick={()=>setDoneTimeF(v)} style={{padding:"3px 8px",borderRadius:10,border:"none",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:font,background:doneTimeF===v?C.blue:C.divider,color:doneTimeF===v?"white":C.textSec}}>{l}</button>))}</div>
         </div>
         {doneBySrc.length===0?<div style={{fontSize:12,color:C.textMuted,textAlign:"center",padding:"6px 0"}}>Không có đơn</div>:<>
           <div style={{display:"grid",gridTemplateColumns:"1fr 40px 60px 60px 60px",gap:4,marginBottom:4,fontSize:10,color:C.textMuted,fontWeight:700,padding:"0 2px"}}><span>NGUỒN</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right"}}>CHI</span><span style={{textAlign:"right"}}>THU</span><span style={{textAlign:"right",color:C.green}}>LÃI</span></div>
-          {doneBySrc.map(([src,s])=>(
-            <div key={src} onClick={()=>setSrcDetail({src,rows:doneFiltered.flatMap(o=>o.items?.filter(it=>(it.nhom||"Khác")===src).map(it=>({tenKH:o.tenKH,tenHang:it.ten,sl:it.sl,ghiChu:it.ghiChu||"",gia:it.gia,von:it.von||0})))||[]})}
-              style={{display:"grid",gridTemplateColumns:"1fr 40px 60px 60px 60px",gap:4,padding:"4px 2px",borderTop:`1px solid ${C.divider}`,fontSize:12,cursor:"pointer"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#F1F5F9"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-              <span style={{fontWeight:600,color:C.blue,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:"underline"}}>{src}</span>
-              <span style={{textAlign:"right",color:C.textSec}}>{s.sl}</span><span style={{textAlign:"right",color:C.red,fontSize:11}}>{fmt(s.chi)}</span><span style={{textAlign:"right",color:C.blue,fontSize:11}}>{fmt(s.thu)}</span><span style={{textAlign:"right",color:C.green,fontWeight:700,fontSize:11}}>{fmt(s.lai)}</span>
-            </div>
-          ))}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 40px 60px 60px 60px",gap:4,padding:"5px 2px",borderTop:`2px solid ${C.border}`,fontSize:12,fontWeight:800}}>
-            <span>TỔNG</span><span style={{textAlign:"right"}}>{doneTotals.sl}</span><span style={{textAlign:"right",color:C.red}}>{fmt(doneBySrc.reduce((a,[,s])=>a+s.chi,0))}</span><span style={{textAlign:"right",color:C.blue}}>{fmt(doneTotals.thu)}</span><span style={{textAlign:"right",color:C.green}}>{fmt(doneTotals.lai)}</span>
-          </div>
+          {doneBySrc.map(([src,s])=>(<div key={src} style={{display:"grid",gridTemplateColumns:"1fr 40px 60px 60px 60px",gap:4,padding:"4px 2px",borderTop:`1px solid ${C.divider}`,fontSize:12}}><span style={{fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{src}</span><span style={{textAlign:"right",color:C.textSec}}>{s.sl}</span><span style={{textAlign:"right",color:C.red,fontSize:11}}>{fmt(s.chi)}</span><span style={{textAlign:"right",color:C.blue,fontSize:11}}>{fmt(s.thu)}</span><span style={{textAlign:"right",color:C.green,fontWeight:700,fontSize:11}}>{fmt(s.lai)}</span></div>))}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 40px 60px 60px 60px",gap:4,padding:"5px 2px",borderTop:`2px solid ${C.border}`,fontSize:12,fontWeight:800}}><span>TỔNG</span><span style={{textAlign:"right"}}>{doneTotals.sl}</span><span style={{textAlign:"right",color:C.red}}>{fmt(doneBySrc.reduce((a,[,s])=>a+s.chi,0))}</span><span style={{textAlign:"right",color:C.blue}}>{fmt(doneTotals.thu)}</span><span style={{textAlign:"right",color:C.green}}>{fmt(doneTotals.lai)}</span></div>
         </>}
       </div>
-      {/* Search + filters */}
       <div style={{padding:"10px 12px",background:C.card,borderBottom:`1px solid ${C.divider}`}}>
-        <div style={{position:"relative",marginBottom:8}}>
-          <Inp value={search} onChange={setSearch} placeholder="🔍 Tìm tên khách hoặc sản phẩm..." style={{fontSize:13,paddingRight:search?36:14}}/>
-          {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"#CBD5E1",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#64748B",fontWeight:700}}>✕</button>}
-        </div>
-        <div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}}>
-          {[["today","Hôm nay"],["week","7 ngày"],["month","Tháng này"],["year","Năm nay"],["all","Tất cả"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setTimeF(v)} style={{flexShrink:0,padding:"5px 12px",borderRadius:16,border:"none",cursor:"pointer",background:timeF===v?C.blue:C.divider,color:timeF===v?"white":C.textSec,fontWeight:timeF===v?700:500,fontSize:12,fontFamily:font}}>{l}</button>
-          ))}
-        </div>
+        <div style={{position:"relative",marginBottom:8}}><Inp value={search} onChange={setSearch} placeholder="🔍 Tìm tên khách hoặc sản phẩm..." style={{fontSize:13}}/>{search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"#CBD5E1",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>✕</button>}</div>
+        <div style={{display:"flex",gap:6,overflowX:"auto",scrollbarWidth:"none"}}>{[["today","Hôm nay"],["week","7 ngày"],["month","Tháng này"],["year","Năm nay"],["all","Tất cả"]].map(([v,l])=>(<button key={v} onClick={()=>setTimeF(v)} style={{flexShrink:0,padding:"5px 12px",borderRadius:16,border:"none",cursor:"pointer",background:timeF===v?C.blue:C.divider,color:timeF===v?"white":C.textSec,fontWeight:timeF===v?700:500,fontSize:12,fontFamily:font}}>{l}</button>))}</div>
       </div>
-      {/* Orders list */}
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
-        {doneList.length>0&&<>
-          {doneList.map(o=><OCard key={o.id} o={o} ip={false}/>)}
-        </>}
-        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>📭</div><div style={{fontWeight:600,marginTop:8}}>Không có đơn trong khoảng này</div><div style={{fontSize:12,marginTop:4}}>Thử chọn "Tất cả"</div></div>}
+        {doneList.map(o=><OCard key={o.id} o={o}/>)}
+        {doneList.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>📭</div><div style={{fontWeight:600,marginTop:8}}>Không có đơn trong khoảng này</div></div>}
       </div>
       {sel&&(
         <Modal onClose={()=>setSel(null)}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-            <div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div>
-            <Badge label={sel.trangThai==="done"?"✅ Đã giao":"⏳ Chờ duyệt"} color={sel.trangThai==="done"?C.green:C.orange} bg={sel.trangThai==="done"?C.greenLight:C.orangeLight}/>
-            <button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div><Badge label="✅ Đã giao" color={C.green} bg={C.greenLight}/><button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
           <div style={{marginBottom:12}}><div style={{fontSize:11,color:C.textMuted}}>Khách hàng</div><div style={{fontWeight:800,fontSize:16,color:C.text}}>{sel.tenKH}</div><div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(sel.ngay)}</div></div>
-          {sel.items?.map((it,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}>
-              <div><div style={{fontWeight:700,color:C.text}}>{it.ten}{it.ghiChu&&<span style={{fontSize:11,color:C.textMuted,fontWeight:400}}> 📝 {it.ghiChu}</span>}</div><div style={{color:C.textSec,fontSize:12}}>{fmt(it.gia)} × {it.sl}</div></div>
-              <div style={{fontWeight:800,color:C.blue}}>{fmt(it.gia*it.sl)}</div>
-            </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginBottom:10}}>
-            <div><div style={{fontWeight:800,fontSize:16}}>Tổng tiền</div><div style={{fontSize:12,color:C.green,fontWeight:600}}>Lợi nhuận: +{fmt(sel.tongTien-sel.tongVon)}</div></div>
-            <div style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</div>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-            <Btn onClick={async()=>{
-              let orderToEdit=sel;
-              // Lấy dữ liệu mới nhất từ GS nếu có API
-              if(api){
-                try{
-                  const res=await api.get("getDonHang");
-                  if(res?.data){
-                    const fresh=res.data.find(o=>o.id===sel.id);
-                    if(fresh) orderToEdit=fresh;
-                  }
-                }catch(e){}
-              }
-              onEditOrder(orderToEdit);setSel(null);
-            }} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
-            {sel.trangThai==="pending"&&<Btn onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳...":"✅ Duyệt"}</Btn>}
+          {sel.items?.map((it,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}><div><div style={{fontWeight:700,color:C.text}}>{it.ten}{it.ghiChu&&<span style={{fontSize:11,color:C.textMuted}}> 📝 {it.ghiChu}</span>}</div><div style={{color:C.textSec,fontSize:12}}>{fmt(it.gia)} × {it.sl}</div></div><div style={{fontWeight:800,color:C.blue}}>{fmt(it.gia*it.sl)}</div></div>))}
+          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16}}>Tổng tiền</div><div style={{fontSize:12,color:C.green,fontWeight:600}}>Lợi nhuận: +{fmt(sel.tongTien-sel.tongVon)}</div></div><div style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</div></div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <Btn onClick={async()=>{let orderToEdit=sel;if(api){try{const res=await api.get("getDonHang");if(res?.data){const fresh=res.data.find(o=>o.id===sel.id);if(fresh) orderToEdit=fresh;}}catch(e){}}onEditOrder(orderToEdit);setSel(null);}} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
+            <Btn onClick={()=>{setInvoiceOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
             <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
               const isDone=sel.trangThai==="done";
-              const revId=genId("CN");
-              if(api){
-                const res=await api.post("cancelOrder",{id:sel.id,maKH:sel.maKH||"",tenKH:sel.tenKH||"",tongTien:sel.tongTien||0,reversDebt:isDone&&sel.maKH!=="le",debtId:revId});
-                if(res?.error) console.error("cancelOrder error:",res.error);
-              }
+              if(api){const res=await api.post("cancelOrder",{id:sel.id,maKH:sel.maKH||"",tenKH:sel.tenKH||"",tongTien:sel.tongTien||0,reversDebt:isDone&&sel.maKH!=="le"});if(res?.error) console.error("cancelOrder error:",res.error);}
               setOrders(os=>os.filter(o=>o.id!==sel.id));
-              if(isDone&&setDebts&&sel.maKH!=="le"){
-                const rev={id:revId,maKH:sel.maKH,tenKH:sel.tenKH,loai:"thu",soTien:sel.tongTien,ngay:nowISO(),ghiChu:`Huỷ đơn ${sel.id}`};
-                setDebts&&setDebts(ds=>[rev,...ds]);
-              }
+              if(isDone&&sel.maKH!=="le"&&setDebts){setDebts(ds=>ds.filter(d=>d.maDon!==sel.id&&!(d.ghiChu||"").includes(sel.id)));}
               setSel(null);notify("✅ Đã xoá đơn!");}} outline color={C.red} style={{flex:1}}>🗑️ Xoá</Btn>
-            {sel.trangThai==="done"&&<Btn onClick={()=>{setInvoiceOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>}
           </div>
         </Modal>
       )}
       <Toast msg={toast}/>
-      {/* Source detail modal for done summary */}
-      {srcDetail&&(
-        <Modal onClose={()=>setSrcDetail(null)}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={{fontWeight:800,fontSize:15,color:C.blue}}>📦 {srcDetail.src}</div>
-            <div style={{display:"flex",gap:6}}>
-              <Btn sm color={C.blue} onClick={()=>{setPrintData2({title:`ĐÃ GIAO: ${srcDetail.src.toUpperCase()}`,date:new Date().toLocaleDateString("vi"),rows:srcDetail.rows,type:"chitiet"});setSrcDetail(null);}}>🖨️ In</Btn>
-              <button onClick={()=>setSrcDetail(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 60px 40px 60px",gap:4,marginBottom:6,fontSize:10,color:C.textMuted,fontWeight:700,padding:"0 2px"}}>
-            <span>KHÁCH / SẢN PHẨM</span><span style={{textAlign:"right"}}>GIÁ</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right"}}>TIỀN</span>
-          </div>
-          {srcDetail.rows.map((r,i)=>(
-            <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 60px 40px 60px",gap:4,padding:"5px 2px",borderTop:`1px solid ${C.divider}`,fontSize:12}}>
-              <div><div style={{fontWeight:600,color:C.text}}>{r.tenHang}{r.ghiChu&&<span style={{fontSize:10,color:C.textMuted}}> 📝{r.ghiChu}</span>}</div><div style={{fontSize:10,color:C.textMuted}}>{r.tenKH}</div></div>
-              <span style={{textAlign:"right",color:C.textSec,fontSize:11}}>{fmt(r.gia)}</span>
-              <span style={{textAlign:"right",fontWeight:700}}>{r.sl}</span>
-              <span style={{textAlign:"right",fontWeight:700,color:C.blue}}>{fmt(r.gia*r.sl)}</span>
-            </div>
-          ))}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 60px 40px 60px",gap:4,padding:"6px 2px",borderTop:`2px solid ${C.border}`,fontSize:12,fontWeight:800,marginTop:4}}>
-            <span>TỔNG</span><span/><span style={{textAlign:"right"}}>{srcDetail.rows.reduce((a,r)=>a+r.sl,0)}</span>
-            <span style={{textAlign:"right",color:C.blue}}>{fmt(srcDetail.rows.reduce((a,r)=>a+r.gia*r.sl,0))}</span>
-          </div>
-        </Modal>
-      )}
-      {printData2&&<PrintModal data={printData2} onClose={()=>setPrintData2(null)}/>}
     </div>
   );
 }
 
 /* ── DEBT TAB ───────────────────────────────────────────────── */
-/* ── AUTOCOMPLETE KH ────────────────────────────────────────── */
-function AutocompleteKH({customers,value,onChange,placeholder="Tìm khách hàng..."}){
-  const [open,setOpen]=useState(false);
-  const [q,setQ]=useState("");
-  const sel=customers.find(k=>k.id===value);
-  const filtered=customers.filter(k=>!q||k.ten.toLowerCase().includes(q.toLowerCase())||k.username.toLowerCase().includes(q.toLowerCase()));
-  return(
-    <div style={{position:"relative"}}>
-      <div style={{display:"flex",alignItems:"center",background:"white",borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
-        {sel&&<Avatar user={sel} size={24} style={{marginLeft:8,flexShrink:0}}/>}
-        <input
-          value={open?q:(sel?.ten||"")}
-          onChange={e=>setQ(e.target.value)}
-          onFocus={()=>{setOpen(true);setQ("");}}
-          onBlur={()=>setTimeout(()=>setOpen(false),200)}
-          placeholder={placeholder}
-          style={{flex:1,padding:"9px 10px",border:"none",outline:"none",fontSize:13,fontFamily:font,background:"transparent"}}
-        />
-        {value&&<button onClick={()=>{onChange("");setQ("");}} style={{background:"none",border:"none",cursor:"pointer",padding:"0 8px",fontSize:16,color:C.textMuted}}>✕</button>}
-      </div>
-      {open&&(
-        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"white",border:`1px solid ${C.border}`,borderRadius:10,boxShadow:C.shadowMd,zIndex:100,maxHeight:220,overflowY:"auto",marginTop:2}}>
-          {filtered.length===0&&<div style={{padding:"10px 14px",color:C.textMuted,fontSize:13}}>Không tìm thấy</div>}
-          {filtered.map(k=>(
-            <div key={k.id} onMouseDown={()=>{onChange(k.id);setQ("");setOpen(false);}}
-              style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",borderBottom:`1px solid ${C.divider}`,background:value===k.id?C.blueLight:"white"}}>
-              <Avatar user={k} size={28}/>
-              <div><div style={{fontWeight:600,fontSize:13,color:C.text}}>{k.ten}</div><div style={{fontSize:11,color:C.textMuted}}>@{k.username}</div></div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
 function DebtTab({customers,debts,setDebts,api,role,currentUser}){
   const debtPrintRef=useRef(null);
-  const [selKH,setSelKH]=useState("");
-  const [amount,setAmount]=useState("");
-  const [toast,setToast]=useState("");
-  const [detail,setDetail]=useState(null);
+  const [selKH,setSelKH]=useState("");const [amount,setAmount]=useState("");
+  const [toast,setToast]=useState("");const [detail,setDetail]=useState(null);
+  const [busyDebt,setBusyDebt]=useState(false);
   const isSeller=role==="seller";
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
-  // Khách hàng chỉ thấy nợ của chính mình
-  const visibleDebts = isSeller ? debts : debts.filter(d=>d.maKH===currentUser?.id);
-
+  const visibleDebts=isSeller?debts:debts.filter(d=>d.maKH===currentUser?.id);
   const debtMap=useMemo(()=>{
     const m={};
     visibleDebts.forEach(d=>{
@@ -1685,40 +1522,36 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
     return m;
   },[visibleDebts]);
   const allList=Object.values(debtMap).sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
-  const oweList=allList.filter(d=>d.total>0);
-  const creditList=allList.filter(d=>d.total<0);
-  const clearList=allList.filter(d=>d.total===0);
-  const tongNo=oweList.reduce((a,x)=>a+x.total,0);
-  const tongDu=creditList.reduce((a,x)=>a+Math.abs(x.total),0);
-  const addDebt=async(loai)=>{
+  const oweList=allList.filter(d=>d.total>0);const creditList=allList.filter(d=>d.total<0);const clearList=allList.filter(d=>d.total===0);
+  const tongNo=oweList.reduce((a,x)=>a+x.total,0);const tongDu=creditList.reduce((a,x)=>a+Math.abs(x.total),0);
+  const addDebtFn=async(loai)=>{
     if(busyDebt) return;
     const amt=parseFloat(String(amount).replace(/[^0-9.]/g,""))||0;
     if(!selKH||amt<=0){notify("⚠️ Chọn KH và nhập số tiền!");return;}
+    setBusyDebt(true);
     const kh=customers.find(c=>c.id===selKH);
-    const d={id:genId("CN"),maKH:selKH,tenKH:kh?.ten||selKH,loai,soTien:amt,ngay:nowISO(),ghiChu:loai==="thu"?"Thu tiền":"Ghi nợ"};
+    const d={id:genId("CN"),maKH:selKH,tenKH:kh?.ten||selKH,loai,soTien:amt,ngay:nowISO(),ghiChu:loai==="thu"?"Thu tiền":"Ghi nợ",maDon:""};
     if(api) await api.post("addDebt",d).catch(()=>{});
     setDebts(ds=>[d,...ds]);setAmount("");notify(loai==="thu"?"✅ Đã thu!":"✅ Đã ghi nợ!");setBusyDebt(false);
   };
-  const [busyDebt,setBusyDebt]=useState(false);
   const addDebtFromDetail=async(loai)=>{
     if(busyDebt) return;
     const amt=parseFloat(String(detail.editAmount||0).replace(/[^0-9.]/g,""))||0;
     if(amt<=0){notify("⚠️ Nhập số tiền!");return;}
     setBusyDebt(true);
-    const d={id:genId("CN"),maKH:detail.maKH,tenKH:detail.ten,loai,soTien:amt,ngay:nowISO(),ghiChu:loai==="thu"?"Thu tiền":"Ghi nợ"};
+    const d={id:genId("CN"),maKH:detail.maKH,tenKH:detail.ten,loai,soTien:amt,ngay:nowISO(),ghiChu:loai==="thu"?"Thu tiền":"Ghi nợ",maDon:""};
     if(api) await api.post("addDebt",d).catch(()=>{});
     setDebts(ds=>[d,...ds]);
     setDetail(prev=>({...prev,total:prev.total+(loai==="no"?amt:-amt),items:[d,...prev.items],editAmount:""}));
-    notify(loai==="thu"?"✅ Đã thu!":"✅ Đã ghi nợ!");
-    setBusyDebt(false);
+    notify(loai==="thu"?"✅ Đã thu!":"✅ Đã ghi nợ!");setBusyDebt(false);
   };
   const DC=({d})=>{const isO=d.total>0,isC=d.total<0;const cust=customers.find(x=>x.id===d.maKH);return(
     <Card onClick={async()=>{
-              let freshItems=d.items||[];
-              if(api){try{const res=await api.get("getCongNo");if(res?.data) freshItems=res.data.filter(x=>x.maKH===d.maKH);}catch(e){}}
-              const ct=freshItems.reduce((a,t)=>a+(t.loai==="no"?t.soTien:-t.soTien),0)||0;
-              setDetail({...d,items:freshItems,editAmount:ct>0?String(Math.round(ct)):String(0)});
-            }} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
+      let freshItems=d.items||[];
+      if(api){try{const res=await api.get("getCongNo");if(res?.data) freshItems=res.data.filter(x=>x.maKH===d.maKH);}catch(e){}}
+      const ct=freshItems.reduce((a,t)=>a+(t.loai==="no"?t.soTien:-t.soTien),0)||0;
+      setDetail({...d,items:freshItems,editAmount:ct>0?String(Math.round(ct)):String(0)});
+    }} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
           <Avatar user={{id:d.maKH,ten:d.ten,avatar:cust?.avatar||""}} size={40}/>
@@ -1736,22 +1569,15 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
     <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
       <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"16px 14px"}}>
         <div style={{display:"flex",gap:10,marginBottom:10}}>
-          <div style={{flex:1,background:"rgba(255,255,255,0.18)",borderRadius:14,padding:"10px 12px"}}>
-            <div style={{color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:700,marginBottom:2}}>⚠️ TỔNG NỢ</div>
-            <div style={{fontWeight:900,color:"white",fontSize:22,letterSpacing:-0.5}}>{fmt(tongNo)}</div>
-            <div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{oweList.length} khách còn nợ</div>
-          </div>
-          {tongDu>0&&(<div style={{flex:1,background:"rgba(255,255,255,0.18)",borderRadius:14,padding:"10px 12px"}}>
-            <div style={{color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:700,marginBottom:2}}>💚 TỔNG DƯ TIỀN</div>
-            <div style={{fontWeight:900,color:"white",fontSize:22,letterSpacing:-0.5}}>{fmt(tongDu)}</div>
-            <div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{creditList.length} khách dư</div>
-          </div>)}
+          <div style={{flex:1,background:"rgba(255,255,255,0.18)",borderRadius:14,padding:"10px 12px"}}><div style={{color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:700,marginBottom:2}}>⚠️ TỔNG NỢ</div><div style={{fontWeight:900,color:"white",fontSize:22,letterSpacing:-0.5}}>{fmt(tongNo)}</div><div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{oweList.length} khách còn nợ</div></div>
+          {tongDu>0&&<div style={{flex:1,background:"rgba(255,255,255,0.18)",borderRadius:14,padding:"10px 12px"}}><div style={{color:"rgba(255,255,255,0.8)",fontSize:11,fontWeight:700,marginBottom:2}}>💚 TỔNG DƯ TIỀN</div><div style={{fontWeight:900,color:"white",fontSize:22,letterSpacing:-0.5}}>{fmt(tongDu)}</div><div style={{color:"rgba(255,255,255,0.7)",fontSize:11,marginTop:2}}>{creditList.length} khách dư</div></div>}
         </div>
         {isSeller&&<div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"10px 12px"}}>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.8)",fontWeight:700,marginBottom:8}}>⚡ LẬP PHIẾU NHANH</div>
+          <input value={selKH?customers.find(k=>k.id===selKH)?.ten||"":""} readOnly placeholder="🔍 Tìm khách hàng..." onClick={()=>{}} style={{width:"100%",padding:"8px 10px",borderRadius:10,border:"none",fontSize:13,marginBottom:6,fontFamily:font,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
           <AutocompleteKH customers={customers} value={selKH} onChange={id=>{setSelKH(id);if(id&&debtMap[id]&&debtMap[id].total>0) setAmount(String(debtMap[id].total));else setAmount("");}} placeholder="🔍 Tìm khách hàng..."/>
-          <div style={{height:8}}/>
-          <div style={{display:"flex",gap:8}}><MoneyInput value={amount} onChange={setAmount} placeholder={selKH&&debtMap[selKH]?.total>0?`Nợ: ${fmt(debtMap[selKH].total)}`:"Số tiền..."} placeholder="Số tiền..." style={{flex:1}}/><Btn onClick={()=>addDebt("thu")} color={C.green} disabled={busyDebt}>💵 Thu</Btn><Btn onClick={()=>addDebt("no")} color={C.red} disabled={busyDebt}>📌 Nợ</Btn></div>
+          <div style={{height:6}}/>
+          <div style={{display:"flex",gap:8}}><MoneyInput value={amount} onChange={setAmount} placeholder="Số tiền..." style={{flex:1}}/><Btn onClick={()=>addDebtFn("thu")} color={C.green} disabled={busyDebt}>💵 Thu</Btn><Btn onClick={()=>addDebtFn("no")} color={C.red} disabled={busyDebt}>📌 Nợ</Btn></div>
         </div>}
       </div>
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
@@ -1760,55 +1586,34 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
         {clearList.length>0&&<><div style={{fontSize:11,color:C.textMuted,fontWeight:700,padding:"8px 2px 4px",letterSpacing:0.5}}>✅ ĐÃ THANH TOÁN ({clearList.length})</div>{clearList.map(d=><DC key={d.maKH} d={d}/>)}</>}
         {allList.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>💰</div><div style={{fontWeight:600,marginTop:8}}>Chưa có công nợ</div></div>}
       </div>
-      {detail&&(()=>{const computedTotal=detail.items.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0);
-        const isO=computedTotal>0,isC=computedTotal<0;return(
+      {detail&&(()=>{const isO=detail.total>0,isC=detail.total<0;const computedTotal=detail.items.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0);const isOC=computedTotal>0,isCC=computedTotal<0;return(
         <Modal onClose={()=>setDetail(null)}>
           <ModalHeader title={detail.ten} onClose={()=>setDetail(null)}/>
           <div ref={debtPrintRef} style={{background:"white",padding:"12px 8px 4px"}}>
             <div style={{fontWeight:900,fontSize:20,color:C.blue,marginBottom:4,textAlign:"center"}}>{detail.ten}</div>
             <div style={{fontSize:11,color:C.textMuted,textAlign:"center",marginBottom:12}}>{new Date().toLocaleDateString("vi")} · Công nợ</div>
             <div style={{marginBottom:14}}>
-              {isO&&<><div style={{fontWeight:900,fontSize:32,color:"white",background:C.red,display:"inline-block",padding:"4px 16px",borderRadius:10,marginBottom:4}}>{fmt(computedTotal)}</div><div style={{fontSize:12,color:C.red,fontWeight:600,marginTop:2}}>⚠️ Còn nợ</div></>}
-              {isC&&<><div style={{fontWeight:900,fontSize:28,color:C.green}}>{fmt(Math.abs(computedTotal))}</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>💚 Đang dư tiền</div></>}
-              {!isO&&!isC&&<><div style={{fontWeight:700,fontSize:22,color:C.textMuted}}>0</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>✅ Đã thanh toán đủ</div></>}
+              {isOC&&<><div style={{fontWeight:900,fontSize:32,color:"white",background:C.red,display:"inline-block",padding:"4px 16px",borderRadius:10,marginBottom:4}}>{fmt(computedTotal)}</div><div style={{fontSize:12,color:C.red,fontWeight:600,marginTop:2}}>⚠️ Còn nợ</div></>}
+              {isCC&&<><div style={{fontWeight:900,fontSize:28,color:C.green}}>{fmt(Math.abs(computedTotal))}</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>💚 Đang dư tiền</div></>}
+              {!isOC&&!isCC&&<><div style={{fontWeight:700,fontSize:22,color:C.textMuted}}>0</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>✅ Đã thanh toán đủ</div></>}
             </div>
             <div style={{fontWeight:700,fontSize:13,color:C.textSec,marginBottom:8}}>📖 Lịch sử giao dịch</div>
             {detail.items.sort((a,b)=>new Date(b.ngay)-new Date(a.ngay)).map((t,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:13,color:t.loai==="no"?C.red:C.green}}>
-                    {t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}
-                  </div>
-                  <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>
-                    {fmtDate(t.ngay)}{(t.ghiChu||t.maDon)?<span> · <span style={{color:C.textSec}}>{t.ghiChu||t.maDon}</span></span>:""}
-                  </div>
+                  <div style={{fontWeight:700,fontSize:13,color:t.loai==="no"?C.red:C.green}}>{t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}</div>
+                  <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(t.ngay)}{(t.ghiChu||t.maDon)?<span> · <span style={{color:C.textSec}}>{t.ghiChu||t.maDon}</span></span>:""}</div>
                 </div>
-                <div style={{fontWeight:900,fontSize:15,color:t.loai==="no"?C.red:C.green,flexShrink:0,marginLeft:8}}>
-                  {t.loai==="no"?"+":"-"}{fmt(t.soTien)}
-                </div>
+                <div style={{fontWeight:900,fontSize:15,color:t.loai==="no"?C.red:C.green,flexShrink:0,marginLeft:8}}>{t.loai==="no"?"+":"-"}{fmt(t.soTien)}</div>
               </div>
             ))}
             <div style={{fontSize:11,color:C.textMuted,textAlign:"center",marginTop:8,fontStyle:"italic"}}>— Xin cảm ơn quý khách! —</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
-              <button onClick={async()=>{
-                if(!window.html2canvas||!debtPrintRef.current) return;
-                const canvas=await window.html2canvas(debtPrintRef.current,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
-                canvas.toBlob(async(blob)=>{
-                  if(navigator.share&&navigator.canShare){
-                    const file=new File([blob],`no-${detail.ten}.jpg`,{type:"image/jpeg"});
-                    if(navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:`Công nợ ${detail.ten}`});return;}catch(e){if(e.name==="AbortError") return;}}
-                  }
-                  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`no-${detail.ten}.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-                },"image/jpeg",0.9);
-              }} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>🖼️ ẢNH</button>
-              <button onClick={()=>{
-                const lines=detail.items.map(t=>`${fmtDate(t.ngay)}: ${t.loai==="no"?"+":"-"}${fmt(t.soTien)}${t.ghiChu?" ("+t.ghiChu+")":""}`).join("\n");
-                const text=["Công nợ: "+detail.ten,"Còn nợ: "+fmt(detail.total),"──────────────",lines].join("\n");
-                navigator.clipboard?.writeText(text).then(()=>alert("✅ Đã copy!"));
-              }} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#1565C0",color:"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>💬 ZALO</button>
-              <button onClick={()=>{setDetail(null);}} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#f5f5f5",color:"#666",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>ĐÓNG</button>
-            </div>
+            <button onClick={async()=>{if(!window.html2canvas||!debtPrintRef.current) return;const canvas=await window.html2canvas(debtPrintRef.current,{scale:2,useCORS:true,backgroundColor:"#ffffff"});canvas.toBlob(async(blob)=>{if(navigator.share&&navigator.canShare){const file=new File([blob],`no-${detail.ten}.jpg`,{type:"image/jpeg"});if(navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:`Công nợ ${detail.ten}`});return;}catch(e){if(e.name==="AbortError") return;}}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`no-${detail.ten}.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},"image/jpeg",0.9);}} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>🖼️ ẢNH</button>
+            <button onClick={()=>{const lines=detail.items.map(t=>`${fmtDate(t.ngay)}: ${t.loai==="no"?"+":"-"}${fmt(t.soTien)}${t.ghiChu?" ("+t.ghiChu+")":""}`).join("\n");const text=["Công nợ: "+detail.ten,"Còn nợ: "+fmt(computedTotal),"──────────────",lines].join("\n");navigator.clipboard?.writeText(text).then(()=>alert("✅ Đã copy!"));}} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#1565C0",color:"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>💬 ZALO</button>
+            <button onClick={()=>setDetail(null)} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#f5f5f5",color:"#666",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>ĐÓNG</button>
+          </div>
           {isSeller&&<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:8}}>
             <MoneyInput value={detail.editAmount||""} onChange={v=>setDetail(d=>({...d,editAmount:v}))} placeholder="Số tiền..."/>
             <div style={{display:"flex",gap:8}}><Btn onClick={()=>addDebtFromDetail("thu")} color={C.green} style={{flex:1}} disabled={busyDebt}>{busyDebt?"⏳...":"💵 Thu tiền"}</Btn><Btn onClick={()=>addDebtFromDetail("no")} color={C.red} style={{flex:1}} disabled={busyDebt}>{busyDebt?"⏳...":"📌 Ghi nợ"}</Btn></div>
@@ -1822,63 +1627,30 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
 
 /* ── CUSTOMERS TAB ──────────────────────────────────────────── */
 function CustomersTab({customers,setCustomers,orders,debts,api}){
-  const [showAdd,setShowAdd]=useState(false);
-  const [form,setForm]=useState({ten:"",username:"",password:"",sdt:""});
-  const [toast,setToast]=useState(""); const [busySave,setBusySave]=useState(false);
+  const [showAdd,setShowAdd]=useState(false);const [form,setForm]=useState({ten:"",username:"",password:"",sdt:""});
+  const [toast,setToast]=useState("");const [busySave,setBusySave]=useState(false);
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2000);};
-  const save=async()=>{
-    if(busySave) return;
-    if(!form.ten||!form.username||!form.password){notify("⚠️ Nhập đầy đủ thông tin!");return;}
-    if(customers.find(c=>c.username===form.username)){notify("⚠️ Tên đăng nhập đã tồn tại!");return;}
-    setBusySave(true);
-    try{
-      const kh={...form,id:genId("KH"),loai:"customer",avatar:""};
-      if(api) await api.post("addCustomer",kh);
-      setCustomers(cs=>[...cs,kh]);setForm({ten:"",username:"",password:"",sdt:""});setShowAdd(false);notify("✅ Đã thêm khách hàng!");
-    }finally{setBusySave(false);}
-  };
+  const save=async()=>{if(busySave) return;if(!form.ten||!form.username||!form.password){notify("⚠️ Nhập đầy đủ!");return;}if(customers.find(c=>c.username===form.username)){notify("⚠️ Tên đăng nhập đã tồn tại!");return;}setBusySave(true);try{const kh={...form,id:genId("KH"),loai:"customer",avatar:""};if(api) await api.post("addCustomer",kh);setCustomers(cs=>[...cs,kh]);setForm({ten:"",username:"",password:"",sdt:""});setShowAdd(false);notify("✅ Đã thêm!");}finally{setBusySave(false);}};
   const getStats=(id)=>{const myO=orders.filter(o=>o.maKH===id),myD=debts.filter(d=>d.maKH===id);return{orders:myO.length,tongTien:myO.reduce((a,o)=>a+o.tongTien,0),conNo:Math.max(0,myD.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0))};};
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:font}}>
-      <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div><div style={{color:"white",fontWeight:800,fontSize:17}}>👥 Khách Hàng</div><div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>{customers.length} khách</div></div>
-        <Btn sm onClick={()=>setShowAdd(true)} style={{background:"white",color:C.blue,border:"none"}}>+ Thêm KH</Btn>
-      </div>
+      <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{color:"white",fontWeight:800,fontSize:17}}>👥 Khách Hàng</div><div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>{customers.length} khách</div></div><Btn sm onClick={()=>setShowAdd(true)} style={{background:"white",color:C.blue,border:"none"}}>+ Thêm KH</Btn></div>
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
-        {customers.map(kh=>{const s=getStats(kh.id);return(
-          <Card key={kh.id} style={{padding:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-              <Avatar user={kh} size={44}/>
-              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:1}}>{kh.ten}</div><div style={{fontSize:12,color:C.textMuted}}>@{kh.username}{kh.sdt?` · ${kh.sdt}`:""}</div></div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-              {[[s.orders+"","Đơn","📦",C.blue],[fmt(s.tongTien),"Doanh thu","💰",C.green],[fmt(s.conNo),"Còn nợ","⚠️",s.conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(
-                <div key={l} style={{background:C.divider,borderRadius:10,padding:"8px 4px",textAlign:"center"}}><div style={{fontSize:15}}>{ic}</div><div style={{fontWeight:800,fontSize:12,color:c,marginTop:2}}>{v}</div><div style={{fontSize:10,color:C.textMuted}}>{l}</div></div>
-              ))}
-            </div>
-          </Card>
-        );})}
+        {customers.map(kh=>{const s=getStats(kh.id);return(<Card key={kh.id} style={{padding:14}}><div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}><Avatar user={kh} size={44}/><div style={{flex:1,minWidth:0}}><div style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:1}}>{kh.ten}</div><div style={{fontSize:12,color:C.textMuted}}>@{kh.username}{kh.sdt?` · ${kh.sdt}`:""}</div></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>{[[s.orders+"","Đơn","📦",C.blue],[fmt(s.tongTien),"Doanh thu","💰",C.green],[fmt(s.conNo),"Còn nợ","⚠️",s.conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(<div key={l} style={{background:C.divider,borderRadius:10,padding:"8px 4px",textAlign:"center"}}><div style={{fontSize:15}}>{ic}</div><div style={{fontWeight:800,fontSize:12,color:c,marginTop:2}}>{v}</div><div style={{fontSize:10,color:C.textMuted}}>{l}</div></div>))}</div></Card>);})}
         {customers.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>👥</div><div style={{fontWeight:600,marginTop:8}}>Chưa có khách hàng</div></div>}
       </div>
-      {showAdd&&(<Modal onClose={()=>setShowAdd(false)}><ModalHeader title="➕ Thêm khách hàng" onClose={()=>setShowAdd(false)}/>
-        {[["ten","Họ tên *","text"],["username","Tên đăng nhập *","text"],["password","Mật khẩu *","password"],["sdt","Số điện thoại","tel"]].map(([k,lb,t])=>(
-          <div key={k} style={{marginBottom:10}}><div style={{fontSize:12,color:C.textMuted,fontWeight:600,marginBottom:4}}>{lb}</div><Inp value={form[k]} onChange={v=>setForm(f=>({...f,[k]:v}))} placeholder={lb} type={t}/></div>
-        ))}
-        <Btn onClick={save} color={C.blue} full disabled={busySave}>{busySave?"⏳ Đang thêm...":"✅ Thêm khách hàng"}</Btn>
-      </Modal>)}
+      {showAdd&&<Modal onClose={()=>setShowAdd(false)}><ModalHeader title="➕ Thêm khách hàng" onClose={()=>setShowAdd(false)}/>{[["ten","Họ tên *","text"],["username","Tên đăng nhập *","text"],["password","Mật khẩu *","password"],["sdt","Số điện thoại","tel"]].map(([k,lb,t])=>(<div key={k} style={{marginBottom:10}}><div style={{fontSize:12,color:C.textMuted,fontWeight:600,marginBottom:4}}>{lb}</div><Inp value={form[k]} onChange={v=>setForm(f=>({...f,[k]:v}))} placeholder={lb} type={t}/></div>))}<Btn onClick={save} color={C.blue} full disabled={busySave}>{busySave?"⏳...":"✅ Thêm khách hàng"}</Btn></Modal>}
       <Toast msg={toast}/>
     </div>
   );
 }
 
-/* ── SHOP TAB (Customer) ────────────────────────────────────── */
+/* ── SHOP TAB ────────────────────────────────────────────────── */
 function ShopTab({products,currentUser,setOrders,api}){
-  const [search,setSearch]=useState("");const [nhom,setNhom]=useState("Tất cả");
-  const [cart,setCart]=useState({});const [toast,setToast]=useState("");const [showCart,setShowCart]=useState(false);const [busyOrder,setBusyOrder]=useState(false);
+  const [search,setSearch]=useState("");const [nhom,setNhom]=useState("Tất cả");const [cart,setCart]=useState({});const [toast,setToast]=useState("");const [showCart,setShowCart]=useState(false);const [busyOrder,setBusyOrder]=useState(false);
   const nhomList=["Tất cả",...new Set(products.map(p=>p.nhom).filter(Boolean))];
   const filtered=products.filter(p=>p.ten&&p.ten.trim()&&(nhom==="Tất cả"||p.nhom===nhom)&&(search===""||p.ten.toLowerCase().includes(search.toLowerCase())));
-  const cartProds=products.filter(p=>cart[p.id]>0);
-  const total=cartProds.reduce((a,p)=>a+p.gia*(cart[p.id]||0),0);const totalQty=Object.values(cart).reduce((a,b)=>a+b,0);
+  const cartProds=products.filter(p=>cart[p.id]>0);const total=cartProds.reduce((a,p)=>a+p.gia*(cart[p.id]||0),0);const totalQty=Object.values(cart).reduce((a,b)=>a+b,0);
   const add=(p)=>setCart(c=>({...c,[p.id]:Math.min(999,(c[p.id]||0)+1)}));const dec=(p)=>setCart(c=>({...c,[p.id]:Math.max(0,(c[p.id]||0)-1)}));
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
   const order=async()=>{if(busyOrder) return;if(totalQty===0){notify("⚠️ Chưa chọn sản phẩm!");return;}setBusyOrder(true);try{const id=genId("DH");const o={id,maKH:currentUser.id,tenKH:currentUser.ten,ngay:nowISO(),trangThai:"pending",tongTien:total,tongVon:cartProds.reduce((a,p)=>a+(p.von||0)*(cart[p.id]||0),0),items:cartProds.map(p=>({maSP:p.id,ten:p.ten,nhom:p.nhom||"",sl:cart[p.id],gia:p.gia,von:p.von||0}))};if(api) await api.post("createOrder",o);setOrders(os=>[o,...os]);setCart({});setShowCart(false);notify("✅ Đặt hàng thành công!");}finally{setBusyOrder(false);}};
@@ -1887,39 +1659,19 @@ function ShopTab({products,currentUser,setOrders,api}){
       <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 12px",display:"flex",alignItems:"center",gap:10}}>
         <div style={{flex:1}}><div style={{color:"white",fontWeight:800,fontSize:17}}>🛍 Mua hàng</div></div>
         {totalQty>0&&<button onClick={()=>setShowCart(true)} style={{background:"white",color:C.blue,border:"none",borderRadius:20,padding:"6px 14px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font,display:"flex",alignItems:"center",gap:6}}>🛒 <span style={{background:C.blue,color:"white",borderRadius:"50%",width:20,height:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800}}>{totalQty}</span> {fmt(total)}</button>}
-        <div style={{position:"relative",flex:1}}>
-          <Inp value={search} onChange={setSearch} placeholder="🔍 Tìm sản phẩm..." style={{background:"rgba(255,255,255,0.92)",border:"none",paddingRight:search?36:14}}/>
-          {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(100,116,139,0.25)",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#475569",fontWeight:700}}>✕</button>}
-        </div>
+        <div style={{position:"relative",flex:1}}><Inp value={search} onChange={setSearch} placeholder="🔍 Tìm sản phẩm..." style={{background:"rgba(255,255,255,0.92)",border:"none"}}/>{search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"rgba(100,116,139,0.25)",border:"none",borderRadius:"50%",width:22,height:22,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>✕</button>}</div>
       </div>
       <div style={{padding:"8px 12px",background:C.card,borderBottom:`1px solid ${C.divider}`}}><Pills options={nhomList} value={nhom} onChange={setNhom}/></div>
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
-        {filtered.map(p=>{const qty=cart[p.id]||0;return(
-          <div key={p.id} style={{background:C.card,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:C.shadow}}>
-            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div><div style={{fontSize:13,color:C.blue,fontWeight:800,marginTop:2}}>{fmt(p.gia)}</div></div>
-            {qty===0?<button onClick={()=>add(p)} style={{background:C.blue,color:"white",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:20,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
-            :<div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={()=>dec(p)} style={{background:"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{fontWeight:800,color:C.blue,minWidth:24,textAlign:"center",fontSize:16}}>{qty}</span><button onClick={()=>add(p)} style={{background:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button></div>}
-          </div>
-        );})}
-        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
+        {filtered.map(p=>{const qty=cart[p.id]||0;return(<div key={p.id} style={{background:C.card,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:C.shadow}}><div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}><div style={{fontSize:13,color:C.blue,fontWeight:800}}>{fmt(p.gia)}</div>{p.nhan&&<div style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>{p.nhan}</div>}</div></div>{qty===0?<button onClick={()=>add(p)} style={{background:C.blue,color:"white",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:20,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>:<div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}><button onClick={()=>dec(p)} style={{background:"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{fontWeight:800,color:C.blue,minWidth:24,textAlign:"center",fontSize:16}}>{qty}</span><button onClick={()=>add(p)} style={{background:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button></div>}</div>);})}
       </div>
-      {showCart&&(<Modal onClose={()=>setShowCart(false)} fullBottom><ModalHeader title="🛒 Giỏ hàng" onClose={()=>setShowCart(false)}/>
-        {cartProds.map(p=>(
-          <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
-            <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div><div style={{fontSize:13,color:C.blue,fontWeight:700}}>{fmt(p.gia)} × {cart[p.id]}</div></div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>dec(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:"#E2E8F0",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{fontWeight:800,color:C.blue,minWidth:20,textAlign:"center"}}>{cart[p.id]}</span><button onClick={()=>add(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:C.green,color:"white",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button></div>
-            <div style={{fontWeight:800,color:C.blue,minWidth:60,textAlign:"right"}}>{fmt(p.gia*cart[p.id])}</div>
-          </div>
-        ))}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",marginBottom:12,borderTop:`2px solid ${C.divider}`}}><span style={{fontWeight:800,fontSize:16}}>Tổng cộng</span><span style={{fontWeight:900,fontSize:18,color:C.blue}}>{fmt(total)}</span></div>
-        <Btn onClick={order} color={C.blue} full disabled={busyOrder}>{busyOrder?"⏳ Đang gửi...":"📋 Gửi đơn đặt hàng"}</Btn>
-      </Modal>)}
+      {showCart&&<Modal onClose={()=>setShowCart(false)} fullBottom><ModalHeader title="🛒 Giỏ hàng" onClose={()=>setShowCart(false)}/>{cartProds.map(p=>(<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}><div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:C.text}}>{p.ten}</div><div style={{fontSize:13,color:C.blue,fontWeight:700}}>{fmt(p.gia)} × {cart[p.id]}</div></div><div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>dec(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:"#E2E8F0",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{fontWeight:800,color:C.blue,minWidth:20,textAlign:"center"}}>{cart[p.id]}</span><button onClick={()=>add(p)} style={{width:28,height:28,borderRadius:"50%",border:"none",background:C.green,color:"white",cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button></div><div style={{fontWeight:800,color:C.blue,minWidth:60,textAlign:"right"}}>{fmt(p.gia*cart[p.id])}</div></div>))}<div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",marginBottom:12,borderTop:`2px solid ${C.divider}`}}><span style={{fontWeight:800,fontSize:16}}>Tổng cộng</span><span style={{fontWeight:900,fontSize:18,color:C.blue}}>{fmt(total)}</span></div><Btn onClick={order} color={C.blue} full disabled={busyOrder}>{busyOrder?"⏳ Đang gửi...":"📋 Gửi đơn đặt hàng"}</Btn></Modal>}
       <Toast msg={toast}/>
     </div>
   );
 }
 
-/* ── MY ORDERS TAB ──────────────────────────────────────────── */
+/* ── MY ORDERS TAB ───────────────────────────────────────────── */
 function MyOrdersTab({orders,currentUser}){
   const mine=orders.filter(o=>o.maKH===currentUser.id).sort((a,b)=>new Date(b.ngay)-new Date(a.ngay));
   const [sel,setSel]=useState(null);
@@ -1927,27 +1679,18 @@ function MyOrdersTab({orders,currentUser}){
     <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
       <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"14px 16px"}}><div style={{color:"white",fontWeight:800,fontSize:17}}>📋 Đơn hàng của tôi</div><div style={{color:"rgba(255,255,255,0.75)",fontSize:12,marginTop:2}}>{mine.length} đơn</div></div>
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:8}}>
-        {mine.map(o=>(
-          <Card key={o.id} onClick={()=>setSel(o)} style={{padding:"12px 14px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span><Badge label={o.trangThai==="done"?"✅ Đã giao":"⏳ Chờ"} color={o.trangThai==="done"?C.green:C.orange} bg={o.trangThai==="done"?C.greenLight:C.orangeLight} size={10}/></div><div style={{fontSize:11,color:C.textMuted}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div></div><div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div></div>
-            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}</div>
-          </Card>
-        ))}
+        {mine.map(o=>(<Card key={o.id} onClick={()=>setSel(o)} style={{padding:"12px 14px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span><Badge label={o.trangThai==="done"?"✅ Đã giao":"⏳ Chờ"} color={o.trangThai==="done"?C.green:C.orange} bg={o.trangThai==="done"?C.greenLight:C.orangeLight} size={10}/></div><div style={{fontSize:11,color:C.textMuted}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div></div><div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div></div><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}</div></Card>))}
         {mine.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>📦</div><div style={{fontWeight:600,marginTop:8}}>Chưa có đơn hàng</div></div>}
       </div>
-      {sel&&(<Modal onClose={()=>setSel(null)}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div><Badge label={sel.trangThai==="done"?"✅ Đã giao":"⏳ Chờ"} color={sel.trangThai==="done"?C.green:C.orange} bg={sel.trangThai==="done"?C.greenLight:C.orangeLight}/><button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
-        {sel.items?.map((it,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}><div><div style={{fontWeight:700,color:C.text}}>{it.ten}</div><div style={{fontSize:12,color:C.textSec}}>{fmt(it.gia)} × {it.sl}</div></div><div style={{fontWeight:800,color:C.blue}}>{fmt(it.gia*it.sl)}</div></div>)}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0"}}><span style={{fontWeight:800,fontSize:16}}>Tổng tiền</span><span style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</span></div>
-      </Modal>)}
+      {sel&&<Modal onClose={()=>setSel(null)}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div><Badge label={sel.trangThai==="done"?"✅ Đã giao":"⏳ Chờ"} color={sel.trangThai==="done"?C.green:C.orange} bg={sel.trangThai==="done"?C.greenLight:C.orangeLight}/><button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>{sel.items?.map((it,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}><div><div style={{fontWeight:700,color:C.text}}>{it.ten}</div><div style={{fontSize:12,color:C.textSec}}>{fmt(it.gia)} × {it.sl}</div></div><div style={{fontWeight:800,color:C.blue}}>{fmt(it.gia*it.sl)}</div></div>)}<div style={{display:"flex",justifyContent:"space-between",padding:"10px 0"}}><span style={{fontWeight:800,fontSize:16}}>Tổng tiền</span><span style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</span></div></Modal>}
     </div>
   );
 }
 
-/* ── CUSTOMER PROFILE ───────────────────────────────────────── */
+/* ── CUSTOMER PROFILE ────────────────────────────────────────── */
 function CustomerProfile({currentUser,onLogout,onUpdateUser,orders,debts,api}){
   const [showPicker,setShowPicker]=useState(false);const [saving,setSaving]=useState(false);
-  const mine=orders.filter(o=>o.maKH===currentUser.id);
-  const myDebts=debts.filter(d=>d.maKH===currentUser.id);
+  const mine=orders.filter(o=>o.maKH===currentUser.id);const myDebts=debts.filter(d=>d.maKH===currentUser.id);
   const conNo=Math.max(0,myDebts.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0));
   const tongMua=mine.filter(o=>o.trangThai==="done").reduce((a,o)=>a+o.tongTien,0);
   const saveAvatar=async(emoji)=>{avatarCache.set(currentUser.id,emoji);const updated={...currentUser,avatar:emoji};onUpdateUser(updated);setShowPicker(false);setSaving(true);try{if(api) await api.post("updateUser",{id:currentUser.id,ten:currentUser.ten,sdt:currentUser.sdt||"",avatar:emoji});}catch(e){}finally{setSaving(false);}};
@@ -1964,15 +1707,11 @@ function CustomerProfile({currentUser,onLogout,onUpdateUser,orders,debts,api}){
         {saving&&<div style={{color:"rgba(255,255,255,0.8)",fontSize:11,marginTop:6}}>⏳ Đang lưu...</div>}
       </div>
       <div style={{margin:"-20px 16px 16px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,position:"relative"}}>
-        {[[mine.length,"Đơn hàng","📦",C.blue],[fmt(tongMua),"Đã mua","💰",C.green],[fmt(conNo),"Còn nợ","⚠️",conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(
-          <div key={l} style={{background:C.card,borderRadius:14,padding:"12px 8px",textAlign:"center",boxShadow:C.shadowMd}}><div style={{fontSize:20}}>{ic}</div><div style={{fontWeight:900,fontSize:14,color:c,marginTop:4}}>{v}</div><div style={{fontSize:10,color:C.textMuted}}>{l}</div></div>
-        ))}
+        {[[mine.length,"Đơn hàng","📦",C.blue],[fmt(tongMua),"Đã mua","💰",C.green],[fmt(conNo),"Còn nợ","⚠️",conNo>0?C.red:C.textMuted]].map(([v,l,ic,c])=>(<div key={l} style={{background:C.card,borderRadius:14,padding:"12px 8px",textAlign:"center",boxShadow:C.shadowMd}}><div style={{fontSize:20}}>{ic}</div><div style={{fontWeight:900,fontSize:14,color:c,marginTop:4}}>{v}</div><div style={{fontSize:10,color:C.textMuted}}>{l}</div></div>))}
       </div>
       <div style={{margin:"0 16px"}}>
         <Card style={{padding:0,overflow:"hidden",marginBottom:14}}>
-          {[["👤","Họ tên",currentUser.ten],["🔑","Tài khoản",currentUser.username],["📞","Số điện thoại",currentUser.sdt||"—"]].map(([ic,l,v])=>(
-            <div key={l} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:`1px solid ${C.divider}`}}><span style={{fontSize:18}}>{ic}</span><div style={{flex:1}}><div style={{fontSize:11,color:C.textMuted,fontWeight:600}}>{l}</div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{v}</div></div></div>
-          ))}
+          {[["👤","Họ tên",currentUser.ten],["🔑","Tài khoản",currentUser.username],["📞","Số điện thoại",currentUser.sdt||"—"]].map(([ic,l,v])=>(<div key={l} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:`1px solid ${C.divider}`}}><span style={{fontSize:18}}>{ic}</span><div style={{flex:1}}><div style={{fontSize:11,color:C.textMuted,fontWeight:600}}>{l}</div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{v}</div></div></div>))}
           <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px"}}><span style={{fontSize:18}}>🖼️</span><div style={{flex:1}}><div style={{fontSize:11,color:C.textMuted,fontWeight:600}}>Avatar</div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{currentUser.avatar?.startsWith("data:")?"Ảnh từ máy":currentUser.avatar?"Emoji":"Chữ cái tên"}</div></div><button onClick={()=>setShowPicker(true)} style={{background:C.blueLight,color:C.blue,border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:font}}>Đổi avatar</button></div>
         </Card>
         <button onClick={onLogout} style={{width:"100%",padding:14,borderRadius:14,border:`2px solid ${C.red}`,background:"transparent",color:C.red,fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:font}}>🚪 Đăng xuất</button>
@@ -1981,13 +1720,12 @@ function CustomerProfile({currentUser,onLogout,onUpdateUser,orders,debts,api}){
   );
 }
 
-/* ── AVATAR CACHE ────────────────────────────────────────────── */
 const avatarCache={
   get:(id)=>{try{return JSON.parse(localStorage.getItem("av_"+id)||'""');}catch{return "";}},
   set:(id,v)=>{try{localStorage.setItem("av_"+id,JSON.stringify(v));}catch{}},
 };
 
-/* ── ROOT APP ────────────────────────────────────────────────── */
+/* ── APP ─────────────────────────────────────────────────────── */
 function App(){
   const [scriptUrl,setScriptUrlRaw]=useState(()=>ls("scriptUrl",""));
   const setScriptUrl=(u)=>{setScriptUrlRaw(u);lsSet("scriptUrl",u);};
@@ -1995,47 +1733,20 @@ function App(){
   const [userRaw,setUserRaw]=useState(()=>ls("session",null));
   const setUser=(u)=>{setUserRaw(u);if(u)lsSet("session",u);else localStorage.removeItem("session");};
   const user=userRaw;
-  const [customers,setCustomers]=useState([]);
-  const [products,setProducts]=useState([]);
-  const [orders,setOrders]=useState([]);
-  const [debts,setDebts]=useState([]);
-  const [tab,setTab]=useState("sell"); // default Bán Hàng
-  const [allGsUsers,setAllGsUsers]=useState([]);
-  const [loadingAccounts,setLoadingAccounts]=useState(false);
-  const [editOrder,setEditOrder]=useState(null);
-
-  const allUsers=useMemo(()=>{
-    if(allGsUsers.length>0){const gsIds=new Set(allGsUsers.map(u=>u.id));const nc=customers.filter(c=>!gsIds.has(c.id));return [...allGsUsers,...nc];}
-    return [SELLER,...customers];
-  },[allGsUsers,customers]);
-
-  useEffect(()=>{
-    if(!api) return;
-    setLoadingAccounts(true);
-    api.get("getTaiKhoan").then(r=>{
-      if(r?.data?.length){
-        setAllGsUsers(r.data);
-        const custs=r.data.filter(u=>u.loai==="customer").map(u=>({...u,avatar:u.avatar||avatarCache.get(u.id)||""}));
-        custs.forEach(u=>{if(u.avatar) avatarCache.set(u.id,u.avatar);});
-        setCustomers(custs);
-      }
-    }).catch(()=>{}).finally(()=>setLoadingAccounts(false));
-  },[api]);
-
-  useEffect(()=>{
-    if(!api||!user) return;
-    (async()=>{try{const [p,o,d]=await Promise.all([api.get("getSanPham"),api.get("getDonHang"),api.get("getCongNo")]);if(p?.data?.length) setProducts(p.data);if(o?.data?.length) setOrders(o.data);if(d?.data?.length) setDebts(d.data);}catch(e){console.error(e);}})();
-  },[api,user?.id]);
-
+  const [customers,setCustomers]=useState([]);const [products,setProducts]=useState([]);
+  const [orders,setOrders]=useState([]);const [debts,setDebts]=useState([]);
+  const [tab,setTab]=useState("");const [allGsUsers,setAllGsUsers]=useState([]);
+  const [loadingAccounts,setLoadingAccounts]=useState(false);const [editOrder,setEditOrder]=useState(null);
+  const allUsers=useMemo(()=>{if(allGsUsers.length>0){const gsIds=new Set(allGsUsers.map(u=>u.id));const nc=customers.filter(c=>!gsIds.has(c.id));return [...allGsUsers,...nc];}return [SELLER,...customers];},[allGsUsers,customers]);
+  useEffect(()=>{if(!api) return;setLoadingAccounts(true);api.get("getTaiKhoan").then(r=>{if(r?.data?.length){setAllGsUsers(r.data);const custs=r.data.filter(u=>u.loai==="customer").map(u=>({...u,avatar:u.avatar||avatarCache.get(u.id)||""}));custs.forEach(u=>{if(u.avatar) avatarCache.set(u.id,u.avatar);});setCustomers(custs);}}).catch(()=>{}).finally(()=>setLoadingAccounts(false));},[api]);
+  useEffect(()=>{if(!api||!user) return;(async()=>{try{const [p,o,d]=await Promise.all([api.get("getSanPham"),api.get("getDonHang"),api.get("getCongNo")]);if(p?.data?.length) setProducts(p.data);if(o?.data?.length) setOrders(o.data);if(d?.data?.length) setDebts(d.data);}catch(e){console.error(e);}})();},[api,user?.id]);
   const login=useCallback((u)=>{setUser(u);setTab(u.loai==="seller"?"sell":"shop");},[]);
   const logout=()=>{setUser(null);setTab("");};
   const updateUser=(updated)=>{setUser(updated);};
   const startEditOrder=(order)=>{setEditOrder(order);setTab("sell");};
-
   if(!user) return <Login allUsers={allUsers} onLogin={login} onSaveUrl={setScriptUrl} scriptUrl={scriptUrl} loadingAccounts={loadingAccounts}/>;
-
   if(user.loai==="seller") return(
-    <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",fontFamily:font}}>
+    <div style={{maxWidth:"100%",minHeight:"100vh",fontFamily:font}}>
       <SellerTabs active={tab} onChange={setTab}/>
       {tab==="sell"&&<SellTab products={products} customers={customers} setOrders={setOrders} setDebts={setDebts} api={api} editOrder={editOrder} setEditOrder={setEditOrder}/>}
       {tab==="orders"&&<OrdersTab orders={orders} setOrders={setOrders} debts={debts} setDebts={setDebts} api={api} onEditOrder={startEditOrder} currentUser={user}/>}
@@ -2045,9 +1756,8 @@ function App(){
       {tab==="profile"&&<SellerProfile currentUser={user} onLogout={logout} onUpdateUser={updateUser} orders={orders} debts={debts} customers={customers} scriptUrl={scriptUrl} onSaveUrl={setScriptUrl} api={api}/>}
     </div>
   );
-
   return(
-    <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",fontFamily:font}}>
+    <div style={{maxWidth:"100%",minHeight:"100vh",fontFamily:font}}>
       {tab==="shop"&&<ShopTab products={products} currentUser={user} setOrders={setOrders} api={api}/>}
       {tab==="orders"&&<MyOrdersTab orders={orders} currentUser={user}/>}
       {tab==="debt"&&<DebtTab customers={customers} debts={debts} setDebts={setDebts} api={api} role="customer" currentUser={user}/>}
@@ -2060,14 +1770,4 @@ function App(){
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
-</html>// 5. Cập nhật CongNo: UPDATE soTien WHERE maDon = orderId
-      if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
-        const cnRows = cn.getDataRange().getValues();
-        for (let i = 1; i < cnRows.length; i++) {
-          if (String(cnRows[i][7]) === String(body.id)) {  // cột H = maDon
-            cn.getRange(i + 1, 4).setValue(Number(body.tongTien)||0); // cột D = soTien
-            break;
-          }
-        }
-      }
-      
+</html>
