@@ -308,8 +308,8 @@ function doPost(e) {
       if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
         cn.appendRow([
           body.newDebtId || ('CN'+Date.now()),
-          body.maKH, body.tenKH, new Date().toISOString(),
-          'no', Number(body.tongTien)||0, 'Bán ' + body.id
+          body.maKH, body.tenKH,
+          Number(body.tongTien)||0, 'no', new Date().toISOString(), 'Bán ' + body.id
         ]);
       }
       res.ok = true;
@@ -354,7 +354,7 @@ function doPost(e) {
     } else if (act === 'addDebt') {
       ss.getSheetByName('CongNo').appendRow([
         body.id, body.maKH, body.tenKH,
-        body.ngay, body.loai, Number(body.soTien)||0, body.ghiChu||''
+        Number(body.soTien)||0, body.loai, body.ngay, body.ghiChu||''
       ]);
       res.ok = true;
 
@@ -1639,7 +1639,12 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
     setBusyDebt(false);
   };
   const DC=({d})=>{const isO=d.total>0,isC=d.total<0;const cust=customers.find(x=>x.id===d.maKH);return(
-    <Card onClick={()=>{const ct=d.items?.reduce((a,t)=>a+(t.loai==='no'?t.soTien:-t.soTien),0)||0;setDetail({...d,editAmount:ct>0?String(Math.round(ct)):String(0)});}} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
+    <Card onClick={async()=>{
+              let freshItems=d.items||[];
+              if(api){try{const res=await api.get("getCongNo");if(res?.data) freshItems=res.data.filter(x=>x.maKH===d.maKH);}catch(e){}}
+              const ct=freshItems.reduce((a,t)=>a+(t.loai==="no"?t.soTien:-t.soTien),0)||0;
+              setDetail({...d,items:freshItems,editAmount:ct>0?String(Math.round(ct)):String(0)});
+            }} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
           <Avatar user={{id:d.maKH,ten:d.ten,avatar:cust?.avatar||""}} size={40}/>
@@ -1701,7 +1706,7 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
                     {t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}
                   </div>
                   <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>
-                    {fmtDate(t.ngay)}{t.ghiChu?<span> · <span style={{color:C.textSec}}>{t.ghiChu}</span></span>:""}
+                    {fmtDate(t.ngay)}{(t.ghiChu||t.maDon)?<span> · <span style={{color:C.textSec}}>{t.ghiChu||t.maDon}</span></span>:""}
                   </div>
                 </div>
                 <div style={{fontWeight:900,fontSize:15,color:t.loai==="no"?C.red:C.green,flexShrink:0,marginLeft:8}}>
