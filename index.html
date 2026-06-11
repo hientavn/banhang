@@ -323,12 +323,21 @@ function doPost(e) {
       // Cập nhật CongNo: tìm dòng có maDon = body.id, sửa soTien tại chỗ
       if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
         const cnr = cn.getDataRange().getValues();
+        const lastCol = cnr[0] ? cnr[0].length : 7;
         let found = false;
         for (let i = 1; i < cnr.length; i++) {
-          if (String(cnr[i][7]) === String(body.id)) {
+          const maDonCell = String(cnr[i][7]||'');          // cột H (maDon mới)
+          const ghiChuCell = String(cnr[i][6]||'');          // cột G (ghiChu cũ)
+          const match = maDonCell === String(body.id) ||
+                        ghiChuCell.includes(body.id);        // tìm cả 2 cách
+          if (match) {
             cn.getRange(i+1, 4).setValue(Number(body.tongTien)||0); // soTien
             cn.getRange(i+1, 6).setValue(new Date().toISOString()); // ngay
             cn.getRange(i+1, 7).setValue('Sửa đơn ' + body.id);    // ghiChu
+            // Ghi maDon vào cột H nếu chưa có
+            if (lastCol < 8 || !maDonCell) {
+              cn.getRange(i+1, 8).setValue(String(body.id));
+            }
             found = true;
             break;
           }
@@ -363,7 +372,9 @@ function doPost(e) {
         if (cn) {
           const cnr = cn.getDataRange().getValues();
           for (let i = cnr.length - 1; i >= 1; i--) {
-            if (String(cnr[i][7]) === String(body.id)) cn.deleteRow(i+1);
+            const maDonMatch = String(cnr[i][7]||'') === String(body.id);
+            const ghiChuMatch = String(cnr[i][6]||'').includes(body.id);
+            if (maDonMatch || ghiChuMatch) cn.deleteRow(i+1);
           }
         }
       }
