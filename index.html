@@ -1639,7 +1639,7 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
     setBusyDebt(false);
   };
   const DC=({d})=>{const isO=d.total>0,isC=d.total<0;const cust=customers.find(x=>x.id===d.maKH);return(
-    <Card onClick={()=>setDetail({...d,editAmount:d.total>0?String(Math.round(d.total)):d.total<0?String(Math.round(Math.abs(d.total))):String(0)})} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
+    <Card onClick={()=>{const ct=d.items?.reduce((a,t)=>a+(t.loai==='no'?t.soTien:-t.soTien),0)||0;setDetail({...d,editAmount:ct>0?String(Math.round(ct)):String(0)});}} style={{padding:"12px 14px",border:`1.5px solid ${isO?C.redLight:isC?"#bbf7d0":C.border}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
           <Avatar user={{id:d.maKH,ten:d.ten,avatar:cust?.avatar||""}} size={40}/>
@@ -1681,22 +1681,32 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
         {clearList.length>0&&<><div style={{fontSize:11,color:C.textMuted,fontWeight:700,padding:"8px 2px 4px",letterSpacing:0.5}}>✅ ĐÃ THANH TOÁN ({clearList.length})</div>{clearList.map(d=><DC key={d.maKH} d={d}/>)}</>}
         {allList.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>💰</div><div style={{fontWeight:600,marginTop:8}}>Chưa có công nợ</div></div>}
       </div>
-      {detail&&(()=>{const isO=detail.total>0,isC=detail.total<0;return(
+      {detail&&(()=>{const computedTotal=detail.items.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0);
+        const isO=computedTotal>0,isC=computedTotal<0;return(
         <Modal onClose={()=>setDetail(null)}>
           <ModalHeader title={detail.ten} onClose={()=>setDetail(null)}/>
           <div ref={debtPrintRef} style={{background:"white",padding:"12px 8px 4px"}}>
             <div style={{fontWeight:900,fontSize:20,color:C.blue,marginBottom:4,textAlign:"center"}}>{detail.ten}</div>
             <div style={{fontSize:11,color:C.textMuted,textAlign:"center",marginBottom:12}}>{new Date().toLocaleDateString("vi")} · Công nợ</div>
             <div style={{marginBottom:14}}>
-              {isO&&<><div style={{fontWeight:900,fontSize:32,color:"white",background:C.red,display:"inline-block",padding:"4px 16px",borderRadius:10,marginBottom:4}}>{fmt(detail.total)}</div><div style={{fontSize:12,color:C.red,fontWeight:600,marginTop:2}}>⚠️ Còn nợ</div></>}
-              {isC&&<><div style={{fontWeight:900,fontSize:28,color:C.green}}>{fmt(Math.abs(detail.total))}</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>💚 Đang dư tiền</div></>}
+              {isO&&<><div style={{fontWeight:900,fontSize:32,color:"white",background:C.red,display:"inline-block",padding:"4px 16px",borderRadius:10,marginBottom:4}}>{fmt(computedTotal)}</div><div style={{fontSize:12,color:C.red,fontWeight:600,marginTop:2}}>⚠️ Còn nợ</div></>}
+              {isC&&<><div style={{fontWeight:900,fontSize:28,color:C.green}}>{fmt(Math.abs(computedTotal))}</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>💚 Đang dư tiền</div></>}
               {!isO&&!isC&&<><div style={{fontWeight:700,fontSize:22,color:C.textMuted}}>0</div><div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:2}}>✅ Đã thanh toán đủ</div></>}
             </div>
             <div style={{fontWeight:700,fontSize:13,color:C.textSec,marginBottom:8}}>📖 Lịch sử giao dịch</div>
             {detail.items.sort((a,b)=>new Date(b.ngay)-new Date(a.ngay)).map((t,i)=>(
-              <div key={i} style={{padding:"8px 0",borderBottom:`1px solid ${C.divider}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                <div><div style={{fontWeight:700,fontSize:13,color:t.loai==="no"?C.red:C.green}}>{t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}</div><div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(t.ngay)}{t.ghiChu?` · ${t.ghiChu}`:""}</div></div>
-                <div style={{fontWeight:900,fontSize:14,color:t.loai==="no"?C.red:C.green}}>{t.loai==="no"?"+":"-"}{fmt(t.soTien)}</div>
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:13,color:t.loai==="no"?C.red:C.green}}>
+                    {t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}
+                  </div>
+                  <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>
+                    {fmtDate(t.ngay)}{t.ghiChu?<span> · <span style={{color:C.textSec}}>{t.ghiChu}</span></span>:""}
+                  </div>
+                </div>
+                <div style={{fontWeight:900,fontSize:15,color:t.loai==="no"?C.red:C.green,flexShrink:0,marginLeft:8}}>
+                  {t.loai==="no"?"+":"-"}{fmt(t.soTien)}
+                </div>
               </div>
             ))}
             <div style={{fontSize:11,color:C.textMuted,textAlign:"center",marginTop:8,fontStyle:"italic"}}>— Xin cảm ơn quý khách! —</div>
