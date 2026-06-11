@@ -322,36 +322,14 @@ function doPost(e) {
           String(it.nhom||''), String(it.ghiChu||'')
         ])
       );
-      // 5. Cập nhật CongNo nếu là đơn đã giao và không phải khách lẻ
-      if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
+      // 5. UPDATE CongNo SET soTien = tongTien WHERE maDon = body.id
+      if (body.trangThai === 'done' && body.maKH !== 'le' && cn) {
         const cnData = cn.getDataRange().getValues();
-        let foundRow = -1;
         for (let i = 1; i < cnData.length; i++) {
-          const maDon  = String(cnData[i][7]||'').trim();   // cột H
-          const ghiChu = String(cnData[i][6]||'').trim();   // cột G
-          // So khớp chính xác với mã đơn
-          if (maDon === String(body.id) ||
-              ghiChu === 'Bán ' + body.id ||
-              ghiChu === 'Duyệt ' + body.id) {
-            foundRow = i;
+          if (String(cnData[i][7]).trim() === String(body.id)) {
+            cn.getRange(i + 1, 4).setValue(Number(body.tongTien) || 0);
             break;
           }
-        }
-        if (foundRow >= 0) {
-          // Cập nhật dòng hiện có
-          cn.getRange(foundRow + 1, 4).setValue(Number(body.tongTien)||0);
-          cn.getRange(foundRow + 1, 6).setValue(new Date().toISOString());
-          cn.getRange(foundRow + 1, 7).setValue('Sửa đơn ' + body.id);
-          cn.getRange(foundRow + 1, 8).setValue(String(body.id)); // đảm bảo maDon có giá trị
-        } else {
-          // Chưa có dòng → tạo mới
-          cn.appendRow([
-            body.newDebtId || ('CN' + Date.now()),
-            body.maKH, body.tenKH,
-            Number(body.tongTien)||0, 'no',
-            new Date().toISOString(),
-            'Sửa đơn ' + body.id, body.id
-          ]);
         }
       }
       res.ok = true;
@@ -382,8 +360,48 @@ function doPost(e) {
     // ── ADD DEBT (ghi nợ / thu tiền) ─────────────────────
     } else if (act === 'addDebt') {
       ss.getSheetByName('CongNo').appendRow([
+        body.id,                    // A: id
+        body.maKH,                  // B: maKH
+        body.tenKH,                 // C: tenKH
+        Number(body.soTien)||0,     // D: soTien
+        body.loai,                  // E: loai
+        body.ngay,                  // F: ngay
+        body.ghiChu||'',            // G: ghiChu
+        body.maDon||''              // H: maDon
+      ]);
+      res.ok = true;
+
+        } else if (act === 'approveOrder') {
+      const sh = ss.getSheetByName('DonHang');
+      const rows = sh.getDataRange().getValues();
+      let orderRow = null;
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(body.id)) {
+          sh.getRange(i+1, 5).setValue('done');
+          orderRow = rows[i]; break;
+        }
+      }
+      // Tạo CongNo khi duyệt đơn (maDon = body.id)
+      if (body.maKH && body.maKH !== 'le') {
+        const cn = ss.getSheetByName('CongNo');
+        if (cn) cn.appendRow([
+          body.debtId || ('CN'+Date.now()),
+          body.maKH, body.tenKH||'',
+          Number(body.tongTien)||Number(orderRow&&orderRow[5])||0,
+          'no', new Date().toISOString(),
+          'Duyệt ' + body.id, body.id
+        ]);
+      }
+      res.ok = true;
+
+    // ── ADD DEBT (ghi nợ / thu tiền) ─────────────────────
+    } else if (act === 'addDebt') {
+      // maDon: dùng giá trị được gửi, hoặc tự trích từ ghiChu ("Bán BH123" → "BH123")
+      const maDon = body.maDon ||
+        (body.ghiChu ? body.ghiChu.trim().split(/\s+/).pop() : '');
+      ss.getSheetByName('CongNo').appendRow([
         body.id, body.maKH, body.tenKH,
-        Number(body.soTien)||0, body.loai, body.ngay, body.ghiChu||'', body.maDon||''
+        Number(body.soTien)||0, body.loai, body.ngay, body.ghiChu||'', maDon
       ]);
       res.ok = true;
 
@@ -2042,4 +2060,14 @@ function App(){
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
-</html>
+</html>// 5. Cập nhật CongNo: UPDATE soTien WHERE maDon = orderId
+      if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
+        const cnRows = cn.getDataRange().getValues();
+        for (let i = 1; i < cnRows.length; i++) {
+          if (String(cnRows[i][7]) === String(body.id)) {  // cột H = maDon
+            cn.getRange(i + 1, 4).setValue(Number(body.tongTien)||0); // cột D = soTien
+            break;
+          }
+        }
+      }
+      
