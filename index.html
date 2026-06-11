@@ -333,7 +333,7 @@ function doPost(e) {
         cn.appendRow([
           body.newDebtId || ('CN'+Date.now()),
           body.maKH, body.tenKH,
-          Number(body.tongTien)||0, 'no', new Date().toISOString(), 'Bán ' + body.id
+          Number(body.tongTien)||0, 'no', new Date().toISOString(), 'Sửa đơn ' + body.id
         ]);
       }
       res.ok = true;
@@ -509,7 +509,8 @@ function doPost(e) {
     // Đảo ngược công nợ nếu đơn đã giao
     if(body.reversDebt && body.maKH && body.maKH!=='le'){
       ss.getSheetByName('CongNo').appendRow([
-        body.debtId||('CN'+Date.now()), body.maKH, body.tenKH, new Date().toISOString(), 'thu', Number(body.tongTien)||0, 'Huỷ đơn '+body.id
+        body.debtId||('CN'+Date.now()), body.maKH, body.tenKH,
+        Number(body.tongTien)||0, 'thu', new Date().toISOString(), 'Huỷ đơn '+body.id
       ]);
     }
     result.ok=true;
@@ -1175,7 +1176,8 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
           maKH:selKH==="le"?"le":selKH,
           tenKH:khObj?.ten||"Khách lẻ",
           tongTien:total, tongVon:von, items,
-          newDebtId: isDoneOrder&&khNguoi ? newDebtId : null
+          newDebtId: isDoneOrder&&khNguoi ? newDebtId : null,
+          isEdit: true
         };
         if(api){
           const r=await api.post("updateOrder",updated);
