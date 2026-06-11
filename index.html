@@ -1030,17 +1030,21 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
             <Btn onClick={()=>printOrder(sel)} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
             <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
               const isDone=sel.trangThai==="done";
-              const revId=genId("CN");
               if(api){
-                const res=await api.post("cancelOrder",{id:sel.id,maKH:sel.maKH||"",tenKH:sel.tenKH||"",tongTien:sel.tongTien||0,reversDebt:isDone&&sel.maKH!=="le",debtId:revId});
+                const res=await api.post("cancelOrder",{
+                  id:sel.id, maKH:sel.maKH||"", tenKH:sel.tenKH||"",
+                  tongTien:sel.tongTien||0,
+                  reversDebt:isDone&&sel.maKH!=="le"
+                });
                 if(res?.error) console.error("cancelOrder error:",res.error);
               }
+              // Xóa đơn khỏi local state
               setOrders(os=>os.filter(o=>o.id!==sel.id));
-              if(isDone&&setDebts&&sel.maKH!=="le"){
-                const rev={id:revId,maKH:sel.maKH,tenKH:sel.tenKH,loai:"thu",soTien:sel.tongTien,ngay:nowISO(),ghiChu:`Huỷ đơn ${sel.id}`};
-                setDebts&&setDebts(ds=>[rev,...ds]);
+              // Xóa công nợ liên quan khỏi local state (GAS đã xóa trên sheet)
+              if(isDone&&sel.maKH!=="le"&&setDebts){
+                setDebts(ds=>ds.filter(d=>!(d.ghiChu||"").includes(sel.id)));
               }
-              setSel(null);notify("✅ Đã xoá đơn!");}} outline color={C.red} style={{flex:1}}>🗑️ Xoá</Btn>
+              setSel(null);notify("✅ Đã xoá đơn!");}} style={{flex:1}}>🗑️ Xoá</Btn>
           </div>
         </Modal>
       )}
@@ -1132,28 +1136,33 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
 
       if(editOrder){
         // Cập nhật đúng đơn cũ — giữ nguyên ID và ngày tạo
-        const oldTotal=editOrder.tongTien||0;
-        const updated={...editOrder,maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",tongTien:total,tongVon:von,items};
-        if(api){const r=await api.post("updateOrder",updated);if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);}
+        const newDebtId=genId("CN");
+        const isDoneOrder=editOrder.trangThai==="done";
+        const khNguoi=selKH!=="le";
+        // Gộp newDebtId vào 1 lần gọi duy nhất
+        const updated={
+          ...editOrder,
+          maKH:selKH==="le"?"le":selKH,
+          tenKH:khObj?.ten||"Khách lẻ",
+          tongTien:total, tongVon:von, items,
+          newDebtId: isDoneOrder&&khNguoi ? newDebtId : null
+        };
+        if(api){
+          const r=await api.post("updateOrder",updated);
+          if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);
+        }
         setOrders(os=>os.map(o=>o.id===editOrder.id?updated:o));
-
-        // Cập nhật local state công nợ nếu đơn đã giao
-        // GAS updateOrder đã xóa CN cũ + ghi CN mới → sync lại local
-        if(editOrder.trangThai==="done" && selKH!=="le"){
+        // Sync local debts: xóa CN cũ, thêm CN mới nếu đơn đã giao
+        if(isDoneOrder&&khNguoi){
           const maKH=selKH; const tenKH=khObj?.ten||"Khách lẻ";
-          const newDebtId=genId("CN");
-          // Gửi newDebtId để GAS ghi vào CongNo
-          if(api) await api.post("updateOrder",{...updated,newDebtId}).catch(()=>{});
-          // Cập nhật local: xóa CN cũ của đơn này, thêm CN mới
           setDebts&&setDebts(ds=>[
             {id:newDebtId,maKH,tenKH,loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${editOrder.id}`},
             ...ds.filter(d=>!(d.ghiChu||"").includes(editOrder.id))
           ]);
         }
-
         setEditOrder(null); reset();
         notify("✅ Đã cập nhật đơn "+editOrder.id+"!");
-        return; // dừng, không tạo đơn mới
+        return;
       }
 
       const id=genId("BH");
