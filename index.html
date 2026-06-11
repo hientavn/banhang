@@ -248,6 +248,171 @@ function doGet(e) {
 
 // ── WRITE ───────────────────────────────────────────────────
 function doPost(e) {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const body = JSON.parse(e.postData.contents);
+  const act  = body.action;
+  const res  = {ok:false};
+
+  try {
+    // ── CREATE ORDER ─────────────────────────────────────
+    if (act === 'createOrder') {
+      ss.getSheetByName('DonHang').appendRow([
+        body.id, body.maKH, body.tenKH, body.ngay,
+        body.trangThai, Number(body.tongTien)||0, Number(body.tongVon)||0
+      ]);
+      (body.items||[]).forEach(it =>
+        ss.getSheetByName('ChiTietDon').appendRow([
+          body.id, String(it.maSP||''), String(it.ten||''),
+          Number(it.sl)||0, Number(it.gia)||0, Number(it.von)||0,
+          String(it.nhom||''), String(it.ghiChu||'')
+        ])
+      );
+      res.ok = true;
+
+    // ── UPDATE ORDER (sửa đơn — xoá cũ, thêm lại cùng ID) ───
+    } else if (act === 'updateOrder') {
+      const oh = ss.getSheetByName('DonHang');
+      const cd = ss.getSheetByName('ChiTietDon');
+      // Xoá dòng cũ trong DonHang
+      const hr = oh.getDataRange().getValues();
+      for (let i = hr.length - 1; i >= 1; i--) {
+        if (String(hr[i][0]) === String(body.id)) { oh.deleteRow(i+1); break; }
+      }
+      // Xoá toàn bộ chi tiết cũ trong ChiTietDon
+      const cr = cd.getDataRange().getValues();
+      for (let i = cr.length - 1; i >= 1; i--) {
+        if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
+      }
+      // Thêm lại với dữ liệu mới (giữ nguyên ID)
+      oh.appendRow([
+        body.id, body.maKH, body.tenKH, body.ngay,
+        body.trangThai, Number(body.tongTien)||0, Number(body.tongVon)||0
+      ]);
+      (body.items||[]).forEach(it =>
+        cd.appendRow([
+          body.id, String(it.maSP||''), String(it.ten||''),
+          Number(it.sl)||0, Number(it.gia)||0, Number(it.von)||0,
+          String(it.nhom||''), String(it.ghiChu||'')
+        ])
+      );
+      res.ok = true;
+
+    // ── DELETE ORDER (xoá đơn — xoá cả 2 sheet, đảo nợ nếu cần) ─
+    } else if (act === 'cancelOrder') {
+      const oh = ss.getSheetByName('DonHang');
+      const hr = oh.getDataRange().getValues();
+      for (let i = hr.length - 1; i >= 1; i--) {
+        if (String(hr[i][0]) === String(body.id)) { oh.deleteRow(i+1); break; }
+      }
+      const cd = ss.getSheetByName('ChiTietDon');
+      const cr = cd.getDataRange().getValues();
+      for (let i = cr.length - 1; i >= 1; i--) {
+        if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
+      }
+      // Đảo ngược công nợ nếu đơn đã giao
+      if (body.reversDebt && body.maKH && body.maKH !== 'le') {
+        ss.getSheetByName('CongNo').appendRow([
+          body.debtId || ('CN' + Date.now()),
+          body.maKH, body.tenKH, new Date().toISOString(),
+          'thu', Number(body.tongTien)||0, 'Huỷ đơn ' + body.id
+        ]);
+      }
+      res.ok = true;
+
+    // ── APPROVE ORDER (duyệt pending → done) ─────────────
+    } else if (act === 'approveOrder') {
+      const sh = ss.getSheetByName('DonHang');
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(body.id)) {
+          sh.getRange(i+1, 5).setValue('done'); break;
+        }
+      }
+      res.ok = true;
+
+    // ── ADD DEBT (ghi nợ / thu tiền) ─────────────────────
+    } else if (act === 'addDebt') {
+      ss.getSheetByName('CongNo').appendRow([
+        body.id, body.maKH, body.tenKH,
+        body.ngay, body.loai, Number(body.soTien)||0, body.ghiChu||''
+      ]);
+      res.ok = true;
+
+    // ── ADD CUSTOMER ──────────────────────────────────────
+    } else if (act === 'addCustomer') {
+      ss.getSheetByName('TaiKhoan').appendRow([
+        body.id, body.username, body.password,
+        body.ten, body.loai, body.sdt||'', body.diaChi||'', body.avatar||''
+      ]);
+      res.ok = true;
+
+    // ── UPDATE USER (profile / avatar) ───────────────────
+    } else if (act === 'updateUser') {
+      const sh = ss.getSheetByName('TaiKhoan');
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(body.id)) {
+          if (body.ten)    sh.getRange(i+1, 4).setValue(body.ten);
+          if (body.sdt)    sh.getRange(i+1, 6).setValue(body.sdt);
+          if (body.avatar !== undefined) sh.getRange(i+1, 8).setValue(body.avatar||'');
+          break;
+        }
+      }
+      res.ok = true;
+
+    } else {
+      res.error = 'Unknown action: ' + act;
+    }
+
+  } catch(err) {
+    res.error = err.message;
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(res))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  const ss  = SpreadsheetApp.getActiveSpreadsheet();
+  const act = e.parameter.action;
+  let result = {};
+
+  if (act === 'getTaiKhoan') {
+    result.data = sheet2arr(ss,'TaiKhoan').map(r => ({
+      id:String(r[0]),username:String(r[1]),password:String(r[2]),ten:String(r[3]),loai:String(r[4]),sdt:r[5]?String(r[5]):'',diaChi:r[6]?String(r[6]):'',avatar:r[7]?String(r[7]):''
+    }));
+  }
+  else if (act === 'getSanPham') {
+    result.data = sheet2arr(ss,'SanPham').map(r => ({
+      id:r[0],ten:r[1],gia:+r[2]||0,von:+r[3]||0,nhom:r[4]||'Khác',nhan:r[5]||''
+    }));
+  }
+  else if (act === 'getDonHang') {
+    const orders = sheet2arr(ss,'DonHang').map(r => ({
+      id:r[0],maKH:r[1],tenKH:r[2],ngay:new Date(r[3]).toISOString(),
+      trangThai:r[4],tongTien:+r[5]||0,tongVon:+r[6]||0,items:[]
+    }));
+    const details = sheet2arr(ss,'ChiTietDon');
+    orders.forEach(o => {
+      o.items = details.filter(d=>d[0]===o.id).map(d=>({
+        maSP:d[1],ten:d[2],sl:+d[3]||0,gia:+d[4]||0,von:+d[5]||0,nhom:d[6]||''
+      }));
+    });
+    result.data = orders;
+  }
+  else if (act === 'getCongNo') {
+    result.data = sheet2arr(ss,'CongNo').map(r => ({
+      id:r[0],maKH:r[1],tenKH:r[2],soTien:+r[3]||0,loai:r[4],
+      ngay:new Date(r[5]).toISOString(),maDon:r[6]||''
+    }));
+  }
+
+  return json(result);
+}
+
+// ── WRITE ───────────────────────────────────────────────────
+function doPost(e) {
   try {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const body = JSON.parse(e.postData.contents);
@@ -827,7 +992,20 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
             <span style={{fontWeight:900,fontSize:20,color:C.orange}}>{fmt(sel.tongTien)}</span>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <Btn onClick={()=>{onEditOrder(sel);setSel(null);}} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
+            <Btn onClick={async()=>{
+              let orderToEdit=sel;
+              // Lấy dữ liệu mới nhất từ GS nếu có API
+              if(api){
+                try{
+                  const res=await api.get("getDonHang");
+                  if(res?.data){
+                    const fresh=res.data.find(o=>o.id===sel.id);
+                    if(fresh) orderToEdit=fresh;
+                  }
+                }catch(e){}
+              }
+              onEditOrder(orderToEdit);setSel(null);
+            }} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
             <Btn onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳...":"✅ Duyệt"}</Btn>
             <Btn onClick={()=>printOrder(sel)} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
             <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
@@ -905,7 +1083,13 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
   useEffect(()=>{
     if(!editOrder) return;
     const nc={},nn={},ng={};
-    editOrder.items?.forEach(it=>{if(!it.maSP) return;nc[it.maSP]=it.sl;if(it.ghiChu) nn[it.maSP]=it.ghiChu;if(it.giaNiemYet&&it.gia!==it.giaNiemYet) ng[it.maSP]=it.gia;});
+    editOrder.items?.forEach(it=>{
+      if(!it.maSP) return;
+      nc[it.maSP]=it.sl;
+      if(it.ghiChu) nn[it.maSP]=it.ghiChu;
+      // Luôn lấy giá đã lưu trong ChiTietDon — không dùng giá gốc sản phẩm
+      ng[it.maSP]=it.gia;
+    });
     setCart(nc);setCartNote(nn);setCartGia(ng);setSelKH(editOrder.maKH||"le");setShowCart(true);
   },[editOrder]);
   const getGia=(p)=>{const v=cartGia[p.id];return(v===undefined||v===null||v==="")?p.gia:v;};
@@ -928,12 +1112,29 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
 
       if(editOrder){
         // Cập nhật đúng đơn cũ — giữ nguyên ID và ngày tạo
+        const oldTotal=editOrder.tongTien||0;
         const updated={...editOrder,maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",tongTien:total,tongVon:von,items};
-        if(api) await api.post("updateOrder",updated).catch(()=>{});
+        if(api){const r=await api.post("updateOrder",updated);if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);}
         setOrders(os=>os.map(o=>o.id===editOrder.id?updated:o));
+
+        // Cập nhật công nợ nếu đơn đã giao và khách có tên (không phải khách lẻ)
+        if(editOrder.trangThai==="done" && (selKH==="le"?false:selKH) && oldTotal!==total){
+          const ghiChu=`Điều chỉnh đơn ${editOrder.id}`;
+          const maKH=selKH==="le"?"le":selKH;
+          const tenKH=khObj?.ten||"Khách lẻ";
+          // Hoàn lại số cũ
+          const rev={id:genId("CN"),maKH,tenKH,loai:"thu",soTien:oldTotal,ngay:nowISO(),ghiChu};
+          // Ghi nợ mới
+          const newDbt={id:genId("CN"),maKH,tenKH,loai:"no",soTien:total,ngay:nowISO(),ghiChu};
+          if(api){
+            await api.post("addDebt",rev).catch(()=>{});
+            await api.post("addDebt",newDbt).catch(()=>{});
+          }
+          setDebts&&setDebts(ds=>[newDbt,rev,...ds]);
+        }
+
         setEditOrder(null); reset();
-        notify("✅ Đã cập nhật đơn "+editOrder.id+"!");
-        return;
+        notify("✅ Đã cập nhật đơn "+editOrder.id+"!");n;
       }
 
       const id=genId("BH");
@@ -1257,7 +1458,20 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
             <div style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</div>
           </div>
           <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-            <Btn onClick={()=>{onEditOrder(sel);setSel(null);}} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
+            <Btn onClick={async()=>{
+              let orderToEdit=sel;
+              // Lấy dữ liệu mới nhất từ GS nếu có API
+              if(api){
+                try{
+                  const res=await api.get("getDonHang");
+                  if(res?.data){
+                    const fresh=res.data.find(o=>o.id===sel.id);
+                    if(fresh) orderToEdit=fresh;
+                  }
+                }catch(e){}
+              }
+              onEditOrder(orderToEdit);setSel(null);
+            }} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
             {sel.trangThai==="pending"&&<Btn onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳...":"✅ Duyệt"}</Btn>}
             <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
               const isDone=sel.trangThai==="done";
