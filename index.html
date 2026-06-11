@@ -216,7 +216,7 @@ function initSheets() {
     'SanPham':    ['id','ten','gia','von','nhom','nhan'],
     'DonHang':    ['id','maKH','tenKH','ngay','trangThai','tongTien','tongVon'],
     'ChiTietDon': ['maDon','maSP','ten','sl','gia','von','nhom','ghiChu'],
-    'CongNo':     ['id','maKH','tenKH','soTien','loai','ngay','ghiChu']
+    'CongNo':     ['id','maKH','tenKH','soTien','loai','ngay','ghiChu','maDon']
   };
   Object.entries(schema).forEach(([name, headers]) => {
     let sh = ss.getSheetByName(name);
@@ -262,7 +262,7 @@ function doGet(e) {
   else if (act === 'getCongNo') {
     result.data = sheet2arr(ss,'CongNo').map(r => ({
       id:r[0],maKH:r[1],tenKH:r[2],soTien:+r[3]||0,loai:r[4],
-      ngay:new Date(r[5]).toISOString(),maDon:r[6]||''
+      ngay:new Date(r[5]).toISOString(),ghiChu:r[6]||'',maDon:r[7]||''
     }));
   }
 
@@ -308,15 +308,7 @@ function doPost(e) {
       for (let i = cr.length - 1; i >= 1; i--) {
         if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
       }
-      // Xoá công nợ liên quan đến đơn này (ghiChu chứa mã đơn)
-      if (cn) {
-        const cnr = cn.getDataRange().getValues();
-        for (let i = cnr.length - 1; i >= 1; i--) {
-          const note = String(cnr[i][6]||'');
-          if (note.includes(body.id)) cn.deleteRow(i+1);
-        }
-      }
-      // Thêm lại với dữ liệu mới (giữ nguyên ID)
+      // Thêm lại DonHang + ChiTietDon với dữ liệu mới
       oh.appendRow([
         body.id, body.maKH, body.tenKH, body.ngay,
         body.trangThai, Number(body.tongTien)||0, Number(body.tongVon)||0
@@ -328,13 +320,28 @@ function doPost(e) {
           String(it.nhom||''), String(it.ghiChu||'')
         ])
       );
-      // Ghi lại công nợ mới nếu đơn đã giao và không phải khách lẻ
+      // Cập nhật CongNo: tìm dòng có maDon = body.id, sửa soTien tại chỗ
       if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
-        cn.appendRow([
-          body.newDebtId || ('CN'+Date.now()),
-          body.maKH, body.tenKH,
-          Number(body.tongTien)||0, 'no', new Date().toISOString(), 'Sửa đơn ' + body.id
-        ]);
+        const cnr = cn.getDataRange().getValues();
+        let found = false;
+        for (let i = 1; i < cnr.length; i++) {
+          if (String(cnr[i][7]) === String(body.id)) {
+            cn.getRange(i+1, 4).setValue(Number(body.tongTien)||0); // soTien
+            cn.getRange(i+1, 6).setValue(new Date().toISOString()); // ngay
+            cn.getRange(i+1, 7).setValue('Sửa đơn ' + body.id);    // ghiChu
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          // Chưa có dòng CongNo cho đơn này → tạo mới
+          cn.appendRow([
+            body.newDebtId || ('CN'+Date.now()),
+            body.maKH, body.tenKH,
+            Number(body.tongTien)||0, 'no', new Date().toISOString(),
+            'Sửa đơn ' + body.id, body.id
+          ]);
+        }
       }
       res.ok = true;
 
@@ -350,14 +357,13 @@ function doPost(e) {
       for (let i = cr.length - 1; i >= 1; i--) {
         if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
       }
-      // Xóa toàn bộ công nợ liên quan đến đơn này
+      // Xóa dòng CongNo có maDon = body.id
       if (body.reversDebt && body.maKH && body.maKH !== 'le') {
         const cn = ss.getSheetByName('CongNo');
         if (cn) {
           const cnr = cn.getDataRange().getValues();
           for (let i = cnr.length - 1; i >= 1; i--) {
-            const note = String(cnr[i][6]||'');
-            if (note.includes(body.id)) cn.deleteRow(i+1);
+            if (String(cnr[i][7]) === String(body.id)) cn.deleteRow(i+1);
           }
         }
       }
@@ -367,10 +373,23 @@ function doPost(e) {
     } else if (act === 'approveOrder') {
       const sh = ss.getSheetByName('DonHang');
       const rows = sh.getDataRange().getValues();
+      let orderRow = null;
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][0]) === String(body.id)) {
-          sh.getRange(i+1, 5).setValue('done'); break;
+          sh.getRange(i+1, 5).setValue('done');
+          orderRow = rows[i]; break;
         }
+      }
+      // Tạo CongNo khi duyệt đơn (maDon = body.id)
+      if (body.maKH && body.maKH !== 'le') {
+        const cn = ss.getSheetByName('CongNo');
+        if (cn) cn.appendRow([
+          body.debtId || ('CN'+Date.now()),
+          body.maKH, body.tenKH||'',
+          Number(body.tongTien)||Number(orderRow&&orderRow[5])||0,
+          'no', new Date().toISOString(),
+          'Duyệt ' + body.id, body.id
+        ]);
       }
       res.ok = true;
 
@@ -378,7 +397,7 @@ function doPost(e) {
     } else if (act === 'addDebt') {
       ss.getSheetByName('CongNo').appendRow([
         body.id, body.maKH, body.tenKH,
-        Number(body.soTien)||0, body.loai, body.ngay, body.ghiChu||''
+        Number(body.soTien)||0, body.loai, body.ngay, body.ghiChu||'', body.maDon||''
       ]);
       res.ok = true;
 
@@ -448,7 +467,7 @@ function doGet(e) {
   else if (act === 'getCongNo') {
     result.data = sheet2arr(ss,'CongNo').map(r => ({
       id:r[0],maKH:r[1],tenKH:r[2],soTien:+r[3]||0,loai:r[4],
-      ngay:new Date(r[5]).toISOString(),maDon:r[6]||''
+      ngay:new Date(r[5]).toISOString(),ghiChu:r[6]||'',maDon:r[7]||''
     }));
   }
 
@@ -922,8 +941,9 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
       const o=orders.find(x=>x.id===id); if(!o) return;
       if(api) await api.post("approveOrder",{id}).catch(()=>{});
       setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done"}:x));
-      const de={id:genId("CN"),maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`};
-      if(api) await api.post("addDebt",de).catch(()=>{});
+      const de={id:genId("CN"),maKH:o.maKH,tenKH:o.tenKH,loai:"no",soTien:o.tongTien,ngay:nowISO(),ghiChu:`Duyệt ${id}`,maDon:id};
+      // Truyền đủ thông tin để GAS ghi CongNo trực tiếp trong approveOrder
+      if(api) await api.post("approveOrder",{id,maKH:o.maKH,tenKH:o.tenKH,tongTien:o.tongTien,debtId:de.id}).catch(()=>{});
       setDebts&&setDebts(ds=>[de,...ds]);
       notify("✅ Đã duyệt!");setSel(null);
     }finally{setBusyApprove(false);}
@@ -1073,7 +1093,7 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
               setOrders(os=>os.filter(o=>o.id!==sel.id));
               // Xóa công nợ liên quan khỏi local state (GAS đã xóa trên sheet)
               if(isDone&&sel.maKH!=="le"&&setDebts){
-                setDebts(ds=>ds.filter(d=>!(d.ghiChu||"").includes(sel.id)));
+                setDebts(ds=>ds.filter(d=>d.maDon!==sel.id&&!(d.ghiChu||"").includes(sel.id)));
               }
               setSel(null);notify("✅ Đã xoá đơn!");}} style={{flex:1}}>🗑️ Xoá</Btn>
           </div>
@@ -1189,7 +1209,7 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
           const maKH=selKH; const tenKH=khObj?.ten||"Khách lẻ";
           setDebts&&setDebts(ds=>[
             {id:newDebtId,maKH,tenKH,loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${editOrder.id}`},
-            ...ds.filter(d=>!(d.ghiChu||"").includes(editOrder.id))
+            ...ds.filter(d=>d.maDon!==editOrder.id&&!(d.ghiChu||"").includes(editOrder.id))
           ]);
         }
         setEditOrder(null); reset();
@@ -1201,7 +1221,7 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
       const o={id,maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",ngay:nowISO(),trangThai:mode==="sell"?"done":"pending",tongTien:total,tongVon:von,items};
       if(api) await api.post("createOrder",o);
       setOrders(os=>[o,...os]);
-      if(mode==="sell"){const de={id:genId("CN"),maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${id}`};if(api) await api.post("addDebt",de).catch(()=>{});setDebts(ds=>[de,...ds]);notify("✅ Bán hàng thành công!");}else{notify("✅ Đặt hàng thành công!");}
+      if(mode==="sell"){const de={id:genId("CN"),maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${id}`,maDon:id};if(api) await api.post("addDebt",de).catch(()=>{});setDebts(ds=>[de,...ds]);notify("✅ Bán hàng thành công!");}else{notify("✅ Đặt hàng thành công!");}
       reset();
     }catch(e){notify("❌ Lỗi: "+e.message);}finally{setBusy(false);}
   };
