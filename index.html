@@ -208,7 +208,30 @@ function initializeSheets() {
 }
 
 // ── READ ────────────────────────────────────────────────────
+/* ── TỰ ĐỘNG TẠO SHEET NẾU CHƯA CÓ ─────────────────────────── */
+function initSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const schema = {
+    'TaiKhoan':   ['id','username','password','ten','loai','sdt','diaChi','avatar'],
+    'SanPham':    ['id','ten','gia','von','nhom','nhan'],
+    'DonHang':    ['id','maKH','tenKH','ngay','trangThai','tongTien','tongVon'],
+    'ChiTietDon': ['maDon','maSP','ten','sl','gia','von','nhom','ghiChu'],
+    'CongNo':     ['id','maKH','tenKH','soTien','loai','ngay','ghiChu']
+  };
+  Object.entries(schema).forEach(([name, headers]) => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) {
+      sh = ss.insertSheet(name);
+      sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sh.getRange(1, 1, 1, headers.length)
+        .setBackground('#1565C0').setFontColor('#ffffff').setFontWeight('bold');
+      sh.setFrozenRows(1);
+    }
+  });
+}
+
 function doGet(e) {
+  initSheets();
   const ss  = SpreadsheetApp.getActiveSpreadsheet();
   const act = e.parameter.action;
   let result = {};
@@ -248,6 +271,7 @@ function doGet(e) {
 
 // ── WRITE ───────────────────────────────────────────────────
 function doPost(e) {
+  initSheets();
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const body = JSON.parse(e.postData.contents);
   const act  = body.action;
@@ -520,6 +544,12 @@ function doPost(e) {
 }
 
 // ── Utils ────────────────────────────────────────────────────
+/* ── CHẠY 1 LẦN ĐỂ KHỞI TẠO SHEET (nếu cần) ──────────────── */
+function setup() {
+  initSheets();
+  SpreadsheetApp.getUi().alert('✅ Đã tạo đầy đủ các sheet!');
+}
+
 function sheet2arr(ss, name) {
   const sh = ss.getSheetByName(name);
   if (!sh || sh.getLastRow() <= 1) return [];
