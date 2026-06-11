@@ -298,21 +298,23 @@ function doPost(e) {
       const oh = ss.getSheetByName('DonHang');
       const cd = ss.getSheetByName('ChiTietDon');
       const cn = ss.getSheetByName('CongNo');
-      // Xoá dòng cũ trong DonHang
+
+      // 1. Xoá DonHang cũ
       const hr = oh.getDataRange().getValues();
       for (let i = hr.length - 1; i >= 1; i--) {
         if (String(hr[i][0]) === String(body.id)) { oh.deleteRow(i+1); break; }
       }
-      // Xoá toàn bộ chi tiết cũ trong ChiTietDon
+      // 2. Xoá ChiTietDon cũ
       const cr = cd.getDataRange().getValues();
       for (let i = cr.length - 1; i >= 1; i--) {
         if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
       }
-      // Thêm lại DonHang + ChiTietDon với dữ liệu mới
+      // 3. Ghi DonHang mới
       oh.appendRow([
         body.id, body.maKH, body.tenKH, body.ngay,
         body.trangThai, Number(body.tongTien)||0, Number(body.tongVon)||0
       ]);
+      // 4. Ghi ChiTietDon mới
       (body.items||[]).forEach(it =>
         cd.appendRow([
           body.id, String(it.maSP||''), String(it.ten||''),
@@ -320,68 +322,41 @@ function doPost(e) {
           String(it.nhom||''), String(it.ghiChu||'')
         ])
       );
-      // Cập nhật CongNo: tìm dòng có maDon = body.id, sửa soTien tại chỗ
+      // 5. Cập nhật CongNo nếu là đơn đã giao và không phải khách lẻ
       if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
-        const cnr = cn.getDataRange().getValues();
-        const lastCol = cnr[0] ? cnr[0].length : 7;
-        let found = false;
-        for (let i = 1; i < cnr.length; i++) {
-          const maDonCell = String(cnr[i][7]||'');          // cột H (maDon mới)
-          const ghiChuCell = String(cnr[i][6]||'');          // cột G (ghiChu cũ)
-          const match = maDonCell === String(body.id) ||
-                        ghiChuCell.includes(body.id);        // tìm cả 2 cách
-          if (match) {
-            cn.getRange(i+1, 4).setValue(Number(body.tongTien)||0); // soTien
-            cn.getRange(i+1, 6).setValue(new Date().toISOString()); // ngay
-            cn.getRange(i+1, 7).setValue('Sửa đơn ' + body.id);    // ghiChu
-            // Ghi maDon vào cột H nếu chưa có
-            if (lastCol < 8 || !maDonCell) {
-              cn.getRange(i+1, 8).setValue(String(body.id));
-            }
-            found = true;
+        const cnData = cn.getDataRange().getValues();
+        let foundRow = -1;
+        for (let i = 1; i < cnData.length; i++) {
+          const maDon  = String(cnData[i][7]||'').trim();   // cột H
+          const ghiChu = String(cnData[i][6]||'').trim();   // cột G
+          // So khớp chính xác với mã đơn
+          if (maDon === String(body.id) ||
+              ghiChu === 'Bán ' + body.id ||
+              ghiChu === 'Duyệt ' + body.id) {
+            foundRow = i;
             break;
           }
         }
-        if (!found) {
-          // Chưa có dòng CongNo cho đơn này → tạo mới
+        if (foundRow >= 0) {
+          // Cập nhật dòng hiện có
+          cn.getRange(foundRow + 1, 4).setValue(Number(body.tongTien)||0);
+          cn.getRange(foundRow + 1, 6).setValue(new Date().toISOString());
+          cn.getRange(foundRow + 1, 7).setValue('Sửa đơn ' + body.id);
+          cn.getRange(foundRow + 1, 8).setValue(String(body.id)); // đảm bảo maDon có giá trị
+        } else {
+          // Chưa có dòng → tạo mới
           cn.appendRow([
-            body.newDebtId || ('CN'+Date.now()),
+            body.newDebtId || ('CN' + Date.now()),
             body.maKH, body.tenKH,
-            Number(body.tongTien)||0, 'no', new Date().toISOString(),
+            Number(body.tongTien)||0, 'no',
+            new Date().toISOString(),
             'Sửa đơn ' + body.id, body.id
           ]);
         }
       }
       res.ok = true;
 
-    // ── DELETE ORDER (xoá đơn — xoá cả 2 sheet, đảo nợ nếu cần) ─
-    } else if (act === 'cancelOrder') {
-      const oh = ss.getSheetByName('DonHang');
-      const hr = oh.getDataRange().getValues();
-      for (let i = hr.length - 1; i >= 1; i--) {
-        if (String(hr[i][0]) === String(body.id)) { oh.deleteRow(i+1); break; }
-      }
-      const cd = ss.getSheetByName('ChiTietDon');
-      const cr = cd.getDataRange().getValues();
-      for (let i = cr.length - 1; i >= 1; i--) {
-        if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
-      }
-      // Xóa dòng CongNo có maDon = body.id
-      if (body.reversDebt && body.maKH && body.maKH !== 'le') {
-        const cn = ss.getSheetByName('CongNo');
-        if (cn) {
-          const cnr = cn.getDataRange().getValues();
-          for (let i = cnr.length - 1; i >= 1; i--) {
-            const maDonMatch = String(cnr[i][7]||'') === String(body.id);
-            const ghiChuMatch = String(cnr[i][6]||'').includes(body.id);
-            if (maDonMatch || ghiChuMatch) cn.deleteRow(i+1);
-          }
-        }
-      }
-      res.ok = true;
-
-    // ── APPROVE ORDER (duyệt pending → done) ─────────────
-    } else if (act === 'approveOrder') {
+        } else if (act === 'approveOrder') {
       const sh = ss.getSheetByName('DonHang');
       const rows = sh.getDataRange().getValues();
       let orderRow = null;
