@@ -273,6 +273,7 @@ function doPost(e) {
     } else if (act === 'updateOrder') {
       const oh = ss.getSheetByName('DonHang');
       const cd = ss.getSheetByName('ChiTietDon');
+      const cn = ss.getSheetByName('CongNo');
       // Xoá dòng cũ trong DonHang
       const hr = oh.getDataRange().getValues();
       for (let i = hr.length - 1; i >= 1; i--) {
@@ -282,6 +283,14 @@ function doPost(e) {
       const cr = cd.getDataRange().getValues();
       for (let i = cr.length - 1; i >= 1; i--) {
         if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
+      }
+      // Xoá công nợ liên quan đến đơn này (ghiChu chứa mã đơn)
+      if (cn) {
+        const cnr = cn.getDataRange().getValues();
+        for (let i = cnr.length - 1; i >= 1; i--) {
+          const note = String(cnr[i][6]||'');
+          if (note.includes(body.id)) cn.deleteRow(i+1);
+        }
       }
       // Thêm lại với dữ liệu mới (giữ nguyên ID)
       oh.appendRow([
@@ -295,6 +304,14 @@ function doPost(e) {
           String(it.nhom||''), String(it.ghiChu||'')
         ])
       );
+      // Ghi lại công nợ mới nếu đơn đã giao và không phải khách lẻ
+      if (body.trangThai === 'done' && body.maKH && body.maKH !== 'le' && cn) {
+        cn.appendRow([
+          body.newDebtId || ('CN'+Date.now()),
+          body.maKH, body.tenKH, new Date().toISOString(),
+          'no', Number(body.tongTien)||0, 'Bán ' + body.id
+        ]);
+      }
       res.ok = true;
 
     // ── DELETE ORDER (xoá đơn — xoá cả 2 sheet, đảo nợ nếu cần) ─
@@ -309,13 +326,16 @@ function doPost(e) {
       for (let i = cr.length - 1; i >= 1; i--) {
         if (String(cr[i][0]) === String(body.id)) cd.deleteRow(i+1);
       }
-      // Đảo ngược công nợ nếu đơn đã giao
+      // Xóa toàn bộ công nợ liên quan đến đơn này
       if (body.reversDebt && body.maKH && body.maKH !== 'le') {
-        ss.getSheetByName('CongNo').appendRow([
-          body.debtId || ('CN' + Date.now()),
-          body.maKH, body.tenKH, new Date().toISOString(),
-          'thu', Number(body.tongTien)||0, 'Huỷ đơn ' + body.id
-        ]);
+        const cn = ss.getSheetByName('CongNo');
+        if (cn) {
+          const cnr = cn.getDataRange().getValues();
+          for (let i = cnr.length - 1; i >= 1; i--) {
+            const note = String(cnr[i][6]||'');
+            if (note.includes(body.id)) cn.deleteRow(i+1);
+          }
+        }
       }
       res.ok = true;
 
@@ -1117,24 +1137,23 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
         if(api){const r=await api.post("updateOrder",updated);if(r?.error) notify("⚠️ Lỗi GAS: "+r.error);}
         setOrders(os=>os.map(o=>o.id===editOrder.id?updated:o));
 
-        // Cập nhật công nợ nếu đơn đã giao và khách có tên (không phải khách lẻ)
-        if(editOrder.trangThai==="done" && (selKH==="le"?false:selKH) && oldTotal!==total){
-          const ghiChu=`Điều chỉnh đơn ${editOrder.id}`;
-          const maKH=selKH==="le"?"le":selKH;
-          const tenKH=khObj?.ten||"Khách lẻ";
-          // Hoàn lại số cũ
-          const rev={id:genId("CN"),maKH,tenKH,loai:"thu",soTien:oldTotal,ngay:nowISO(),ghiChu};
-          // Ghi nợ mới
-          const newDbt={id:genId("CN"),maKH,tenKH,loai:"no",soTien:total,ngay:nowISO(),ghiChu};
-          if(api){
-            await api.post("addDebt",rev).catch(()=>{});
-            await api.post("addDebt",newDbt).catch(()=>{});
-          }
-          setDebts&&setDebts(ds=>[newDbt,rev,...ds]);
+        // Cập nhật local state công nợ nếu đơn đã giao
+        // GAS updateOrder đã xóa CN cũ + ghi CN mới → sync lại local
+        if(editOrder.trangThai==="done" && selKH!=="le"){
+          const maKH=selKH; const tenKH=khObj?.ten||"Khách lẻ";
+          const newDebtId=genId("CN");
+          // Gửi newDebtId để GAS ghi vào CongNo
+          if(api) await api.post("updateOrder",{...updated,newDebtId}).catch(()=>{});
+          // Cập nhật local: xóa CN cũ của đơn này, thêm CN mới
+          setDebts&&setDebts(ds=>[
+            {id:newDebtId,maKH,tenKH,loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${editOrder.id}`},
+            ...ds.filter(d=>!(d.ghiChu||"").includes(editOrder.id))
+          ]);
         }
 
         setEditOrder(null); reset();
         notify("✅ Đã cập nhật đơn "+editOrder.id+"!");
+        return; // dừng, không tạo đơn mới
       }
 
       const id=genId("BH");
