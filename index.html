@@ -1556,129 +1556,102 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
         {allList.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>💰</div><div style={{fontWeight:600,marginTop:8}}>Chưa có công nợ</div></div>}
       </div>
       {detail&&(()=>{
-        const computedTotal=detail.items.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0);
-        const isOC=computedTotal>0,isCC=computedTotal<0;
-        const shopName=currentUser?.ten||"Cửa Hàng";
+        const shopName    = currentUser?.ten||"Cửa Hàng";
+        const shopAvatar  = currentUser?.avatar||"";
+        const computedTotal = detail.items.reduce((a,d)=>a+(d.loai==="no"?d.soTien:-d.soTien),0);
+        const isOC=computedTotal>0, isCC=computedTotal<0;
+        const sorted = [...detail.items].sort((a,b)=>new Date(a.ngay)-new Date(b.ngay));
+        let running=0;
+        const withBalance = sorted.map(t=>{
+          running += t.loai==="no" ? t.soTien : -t.soTien;
+          return {...t, balance:running};
+        }).reverse();
 
-        // ── Share functions (giống InvoiceModal) ──────────────
-        const noItems=detail.items.filter(t=>t.loai==="no");
+        // Mô tả từng giao dịch — luôn hiện mã đơn nếu có
+        const getDesc=(t)=>{
+          const g=(t.ghiChu||t.maDon||"").trim();
+          const base=t.loai==="no"?"Đã tạo phiếu nợ":"Đã tạo phiếu thu";
+          return g ? base+" · "+g : base;
+        };
+
         const doShare=async()=>{
           if(!window.html2canvas||!debtShareRef.current) return;
-          const canvas=await window.html2canvas(debtShareRef.current,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+          const canvas=await window.html2canvas(debtShareRef.current,{scale:2,useCORS:true,backgroundColor:"#fff"});
           canvas.toBlob(async(blob)=>{
             if(navigator.share&&navigator.canShare){
               const file=new File([blob],`no-${detail.ten}.jpg`,{type:"image/jpeg"});
-              if(navigator.canShare({files:[file]})){
-                try{await navigator.share({files:[file],title:"Công nợ "+detail.ten});return;}
-                catch(e){if(e.name==="AbortError") return;}
-              }
+              if(navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:"Công nợ "+detail.ten});return;}catch(e){if(e.name==="AbortError") return;}}
             }
-            const url=URL.createObjectURL(blob);
-            const a=document.createElement("a");a.href=url;a.download=`no-${detail.ten}.jpg`;a.click();
-            setTimeout(()=>URL.revokeObjectURL(url),1000);
+            const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`no-${detail.ten}.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
           },"image/jpeg",0.9);
         };
 
-        const doZalo=()=>{
-          const lines=noItems
-            .sort((a,b)=>new Date(b.ngay)-new Date(a.ngay))
-            .map(t=>"📌 "+fmtDate(t.ngay)+(t.ghiChu?" "+t.ghiChu:"")+" +"+fmt(t.soTien))
-            .join("\n");
-          const text=[shopName,"KH: "+detail.ten+" · "+new Date().toLocaleDateString("vi"),
-            "──────────────────────────",lines,
-            "──────────────────────────",
-            (isOC?"Còn nợ: "+fmt(computedTotal):isCC?"Dư: "+fmt(Math.abs(computedTotal)):"Đã thanh toán đủ")
-          ].join("\n");
-          navigator.clipboard?.writeText(text).then(()=>alert("✅ Đã copy! Dán vào Zalo"));
-        };
-
-        const doPDF=()=>{
-          const w=window.open("","_blank");
-          const rows=noItems
-            .sort((a,b)=>new Date(b.ngay)-new Date(a.ngay))
-            .map((t,i)=>"<tr><td>"+(i+1)+"</td><td style='color:"+(t.loai==="no"?"#c62828":"#2e7d32")+"'>"+(t.loai==="no"?"Ghi no":"Thu tien")+"</td><td>"+fmtDate(t.ngay)+"</td><td>"+(t.ghiChu||"")+"</td><td style='text-align:right;font-weight:700;color:"+(t.loai==="no"?"#c62828":"#2e7d32")+"'>"+(t.loai==="no"?"+":"-")+fmt(t.soTien)+"</td></tr>")
-            .join("");
-          const totalRow="<tr style='border-top:2px solid #333;font-weight:900'><td colspan='4'>"+(isOC?"Con no":"Du tien")+"</td><td style='text-align:right;color:"+(isOC?"#c62828":"#2e7d32")+"'>"+(isOC?"+":"")+fmt(Math.abs(computedTotal))+"</td></tr>";
-          const html="<html><head><title>Cong no "+detail.ten+"</title><style>body{font-family:monospace;max-width:340px;margin:20px auto;font-size:13px}table{width:100%;border-collapse:collapse}td{padding:4px 3px;border-bottom:1px solid #eee}hr{border:1px dashed #000}h3{text-align:center;margin:4px 0}</style></head><body>"
-            +"<h3>"+shopName+"</h3><hr/>"
-            +"<div style='font-size:12px'><b>KH: "+detail.ten+"</b> · "+new Date().toLocaleDateString("vi")+"</div><hr/>"
-            +"<table><thead><tr><th>#</th><th>Loai</th><th>Ngay</th><th>Ghi chu</th><th>So tien</th></tr></thead><tbody>"+rows+totalRow+"</tbody></table>"
-            +"</body></html>";
-          w.document.write(html);
-          w.document.close();setTimeout(()=>w.print(),300);
-        };
+        // Layout receipt dùng chung cho modal và share
+        const ReceiptContent=({forShare})=>(
+          <div style={{background:"white",padding:"16px 12px",borderRadius:forShare?0:0}}>
+            {/* Avatar + tên shop */}
+            <div style={{textAlign:"center",marginBottom:10}}>
+              <Avatar user={{id:"shop",ten:shopName,avatar:shopAvatar}} size={forShare?56:64} style={{margin:"0 auto 6px"}}/>
+              <div style={{fontWeight:900,fontSize:forShare?16:18,color:C.blue}}>{shopName}</div>
+              <div style={{borderBottom:"2px solid #222",margin:"8px 0"}}/>
+            </div>
+            {/* KH + tổng nợ */}
+            <div style={{marginBottom:8}}>
+              <div style={{fontSize:13,color:C.text,marginBottom:4}}>
+                <b>KH: {detail.ten}</b> · {new Date().toLocaleDateString("vi")}
+              </div>
+              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                <span style={{fontWeight:900,fontSize:28,color:isOC?C.red:isCC?C.green:C.textMuted,letterSpacing:-0.5}}>
+                  {fmt(Math.abs(computedTotal))}
+                </span>
+                <span style={{fontSize:12,fontWeight:700,color:isOC?C.red:isCC?C.green:C.textMuted}}>
+                  {isOC?"⚠️ Còn nợ":isCC?"💚 Dư tiền":"✅ Đã xong"}
+                </span>
+              </div>
+            </div>
+            <div style={{borderTop:"1px dashed #aaa",marginBottom:6}}/>
+            {/* Header bảng */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 72px 58px",fontSize:11,fontWeight:700,color:"#555",padding:"0 2px",marginBottom:4}}>
+              <span>Giao dịch</span>
+              <span style={{textAlign:"right"}}>Ngày</span>
+              <span style={{textAlign:"right"}}>Số tiền</span>
+            </div>
+            <div style={{borderBottom:"1px dashed #aaa",marginBottom:4}}/>
+            {/* Các dòng giao dịch */}
+            {withBalance.map((t,i)=>{
+              const isNo=t.loai==="no";
+              return(
+                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 72px 58px",padding:"7px 2px",borderBottom:"1px solid #f0f0f0",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:13,color:isNo?C.red:C.green}}>
+                      {isNo?"📌 Ghi nợ":"💵 Thu tiền"}
+                    </div>
+                    <div style={{fontSize:10,color:C.textMuted,marginTop:1}}>{getDesc(t)}</div>
+                  </div>
+                  <div style={{textAlign:"right",fontSize:11,color:C.textMuted}}>{fmtDate(t.ngay)}</div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontWeight:800,fontSize:13,color:isNo?C.red:C.green}}>
+                      {isNo?"+":"-"}{fmt(t.soTien)}
+                    </div>
+                    <div style={{fontSize:9,color:C.textMuted}}>
+                      {t.balance>0?"Nợ ":"Dư "}<span style={{fontWeight:700,color:t.balance>0?C.red:C.green}}>{fmt(Math.abs(t.balance))}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
 
         return(
           <Modal onClose={()=>setDetail(null)}>
-            {/* Phần in — giống InvoiceModal */}
-            <div ref={debtPrintRef} style={{background:"white",padding:"16px 12px",borderRadius:8,marginBottom:12,border:"1px solid #e0e0e0"}}>
-              <div style={{textAlign:"center",marginBottom:10}}>
-                <div style={{fontSize:36}}>🏪</div>
-                <div style={{fontWeight:900,fontSize:15,color:C.blue,marginTop:4}}>{shopName}</div>
-                <div style={{borderBottom:"2px solid #333",margin:"8px 0"}}/>
-              </div>
-              <div style={{fontSize:12,marginBottom:8}}>
-                <b>KH: {detail.ten}</b> · {new Date().toLocaleDateString("vi")}
-              </div>
-              <div style={{borderTop:"1px dashed #888",marginBottom:6}}/>
-              {/* Header bảng */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 72px 68px",fontSize:11,fontWeight:700,color:"#444",padding:"0 2px",marginBottom:4}}>
-                <span>Giao dịch</span><span style={{textAlign:"right"}}>Ngày</span><span style={{textAlign:"right"}}>Số tiền</span>
-              </div>
-              <div style={{borderBottom:"1px dashed #aaa",marginBottom:4}}/>
-              {detail.items.sort((a,b)=>new Date(b.ngay)-new Date(a.ngay)).map((t,i)=>(
-                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 72px 68px",fontSize:12,padding:"5px 2px",borderBottom:"1px solid #f0f0f0",alignItems:"center"}}>
-                  <div>
-                    <span style={{fontWeight:700,color:t.loai==="no"?C.red:C.green}}>{t.loai==="no"?"📌 Ghi nợ":"💵 Thu tiền"}</span>
-                    {(t.ghiChu||t.maDon)&&<div style={{fontSize:10,color:C.textMuted}}>{t.ghiChu||t.maDon}</div>}
-                  </div>
-                  <span style={{textAlign:"right",fontSize:10,color:C.textMuted}}>{fmtDate(t.ngay)}</span>
-                  <span style={{textAlign:"right",fontWeight:800,color:t.loai==="no"?C.red:C.green}}>{t.loai==="no"?"+":"-"}{fmt(t.soTien)}</span>
-                </div>
-              ))}
-              <div style={{borderTop:"1px dashed #888",margin:"6px 0"}}/>
-              <div style={{display:"flex",justifyContent:"space-between",fontWeight:900,fontSize:14}}>
-                <span>{isOC?"⚠️ Còn nợ":isCC?"💚 Dư tiền":"✅ Đã xong"}</span>
-                <span style={{color:isOC?C.red:isCC?C.green:C.textMuted}}>{fmt(Math.abs(computedTotal))}</span>
-              </div>
-              <div style={{textAlign:"center",fontSize:10,color:C.textMuted,marginTop:6,fontStyle:"italic"}}>— Xin cảm ơn quý khách! —</div>
-            </div>
+            {/* View chi tiết */}
+            <ReceiptContent forShare={false}/>
 
-            {/* Hidden share div — chỉ hiện ghi nợ để chụp ảnh */}
-            <div ref={debtShareRef} style={{position:"fixed",left:-9999,top:0,background:"white",padding:"16px 12px",width:320,zIndex:-1}}>
-              <div style={{textAlign:"center",marginBottom:10}}>
-                <div style={{fontSize:36}}>🏪</div>
-                <div style={{fontWeight:900,fontSize:15,color:C.blue,marginTop:4}}>{shopName}</div>
-                <div style={{borderBottom:"2px solid #333",margin:"8px 0"}}/>
-              </div>
-              <div style={{fontSize:12,marginBottom:8}}><b>KH: {detail.ten}</b> · {new Date().toLocaleDateString("vi")}</div>
-              <div style={{borderTop:"1px dashed #888",marginBottom:6}}/>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 72px 68px",fontSize:11,fontWeight:700,color:"#444",padding:"0 2px",marginBottom:4}}>
-                <span>Đơn hàng</span><span style={{textAlign:"right"}}>Ngày</span><span style={{textAlign:"right"}}>Số tiền</span>
-              </div>
-              <div style={{borderBottom:"1px dashed #aaa",marginBottom:4}}/>
-              {noItems.sort((a,b)=>new Date(b.ngay)-new Date(a.ngay)).map((t,i)=>(
-                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 72px 68px",fontSize:12,padding:"5px 2px",borderBottom:"1px solid #f0f0f0"}}>
-                  <div style={{fontWeight:600,color:C.red}}>{t.ghiChu||t.maDon||"Ghi nợ"}</div>
-                  <span style={{textAlign:"right",fontSize:10,color:C.textMuted}}>{fmtDate(t.ngay)}</span>
-                  <span style={{textAlign:"right",fontWeight:800,color:C.red}}>+{fmt(t.soTien)}</span>
-                </div>
-              ))}
-              <div style={{borderTop:"1px dashed #888",margin:"6px 0"}}/>
-              <div style={{display:"flex",justifyContent:"space-between",fontWeight:900,fontSize:14}}>
-                <span>⚠️ Còn nợ</span>
-                <span style={{color:C.red}}>{fmt(noItems.reduce((a,t)=>a+t.soTien,0))}</span>
-              </div>
-              <div style={{textAlign:"center",fontSize:10,color:C.textMuted,marginTop:6,fontStyle:"italic"}}>— Xin cảm ơn quý khách! —</div>
-            </div>
-
-            {/* Buttons — giống InvoiceModal */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
-              <button onClick={doShare} style={{padding:"11px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font}}>🖼️ ẢNH</button>
-              <button onClick={doPDF}   style={{padding:"11px 0",borderRadius:10,border:"none",background:"#F44336",color:"white",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font}}>📄 PDF</button>
-              <button onClick={doZalo}  style={{padding:"11px 0",borderRadius:10,border:"none",background:C.blue,color:"white",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:font}}>💬 ZALO</button>
-            </div>
+            {/* Nút chia sẻ */}
+            <button onClick={doShare} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:font,margin:"10px 0 6px"}}>🖼️ Chia sẻ ảnh</button>
             <button onClick={()=>setDetail(null)} style={{width:"100%",padding:"11px 0",borderRadius:10,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:font}}>ĐÓNG</button>
+
             {/* Form thu/ghi nợ nhanh */}
             {isSeller&&<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
               <MoneyInput value={detail.editAmount||""} onChange={v=>setDetail(d=>({...d,editAmount:v}))} placeholder="Số tiền..."/>
@@ -1687,9 +1660,14 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
                 <Btn onClick={()=>addDebtFromDetail("no")}  color={C.red}   style={{flex:1}} disabled={busyDebt}>{busyDebt?"⏳...":"📌 Ghi nợ"}</Btn>
               </div>
             </div>}
+
+            {/* Hidden share div — giống hệt view chi tiết */}
+            <div ref={debtShareRef} style={{position:"fixed",left:-9999,top:0,zIndex:-1,width:340}}>
+              <ReceiptContent forShare={true}/>
+            </div>
           </Modal>
         );
-      })()}      <Toast msg={toast}/>
+      })()}    <Toast msg={toast}/>
     </div>
   );
 }
