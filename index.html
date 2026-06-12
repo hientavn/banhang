@@ -1569,9 +1569,7 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
 
         // Mô tả từng giao dịch — luôn hiện mã đơn nếu có
         const getDesc=(t)=>{
-          const g=(t.ghiChu||t.maDon||"").trim();
-          const base=t.loai==="no"?"Đã tạo phiếu nợ":"Đã tạo phiếu thu";
-          return g ? base+" · "+g : base;
+          return (t.ghiChu||t.maDon||"").trim();
         };
 
         const doShare=async()=>{
