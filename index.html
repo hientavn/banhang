@@ -912,9 +912,23 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
   const [toast,setToast]=useState("");
   const [busyApprove,setBusyApprove]=useState(false);
   const srcDetailRef=useRef(null);
+  const [busyDel,setBusyDel]=useState(false);
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
   const prodMap=useMemo(()=>{const m={};products.forEach(p=>{m[p.id]=p;});return m;},[products]);
   const pendingOrders=orders.filter(o=>o.trangThai==="pending").sort((a,b)=>new Date(b.ngay)-new Date(a.ngay));
+
+  const deleteAllPending=async()=>{
+    if(!window.confirm(`Xoá tất cả ${pendingOrders.length} đơn tạm?`)) return;
+    setBusyDel(true);
+    try{
+      for(const o of pendingOrders){
+        if(api) await api.post("cancelOrder",{id:o.id,maKH:o.maKH||"",tenKH:o.tenKH||"",tongTien:o.tongTien||0,reversDebt:false});
+      }
+      setOrders(os=>os.filter(o=>o.trangThai!=="pending"));
+      notify("✅ Đã xoá tất cả đơn tạm!");
+    }catch(e){notify("⚠️ Có lỗi: "+e.message);}
+    finally{setBusyDel(false);}
+  };
 
   // Tổng hợp theo nguồn
   const bySrc=useMemo(()=>{
@@ -968,7 +982,13 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
       {printData&&<PrintModal data={printData} onClose={()=>setPrintData(null)}/>}
       {/* Tổng hợp theo nguồn */}
       <div style={{background:C.card,padding:"12px 14px",borderBottom:`1px solid ${C.divider}`}}>
-        <div style={{fontWeight:800,fontSize:14,color:C.orange,marginBottom:8}}>📝 Tổng hợp đơn tạm</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <div style={{fontWeight:800,fontSize:14,color:C.orange}}>📝 Tổng hợp đơn tạm</div>
+          {pendingOrders.length>0&&<button onClick={deleteAllPending} disabled={busyDel}
+            style={{padding:"4px 10px",borderRadius:8,border:`1px solid ${C.red}`,background:"white",color:C.red,fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:font}}>
+            {busyDel?"⏳...":"🗑️ Xoá tất cả"}
+          </button>}
+        </div>
         {bySrc.length===0?<div style={{fontSize:12,color:C.textMuted,textAlign:"center",padding:"6px 0"}}>Không có đơn tạm</div>:<>
           <div style={{display:"grid",gridTemplateColumns:"1fr 40px 56px 56px 50px",gap:4,marginBottom:4,fontSize:10,color:C.textMuted,fontWeight:700,padding:"0 2px"}}>
             <span>NGUỒN</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right",color:C.red}}>CHI</span><span style={{textAlign:"right",color:C.blue}}>THU</span><span style={{textAlign:"right",color:C.green}}>LÃI</span>
@@ -1093,7 +1113,7 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
               onEditOrder(orderToEdit);setSel(null);
             }} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
             <Btn onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳...":"✅ Duyệt"}</Btn>
-            <Btn onClick={()=>printOrder(sel)} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
+            <Btn onClick={()=>{printOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
             <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
               const isDone=sel.trangThai==="done";
               if(api){
