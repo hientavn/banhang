@@ -1453,7 +1453,7 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
           const [showCal,setShowCal]=useState(false);
           const [calMonth,setCalMonth]=useState(()=>new Date());
           const [picking,setPicking]=useState(null);
-          const fmt2=(s)=>s.slice(5).replace("-","/");
+          const fmt2=(s)=>{const [,mm,dd]=s.split("-");return `${dd}/${mm}`;};
           const dStr=(d)=>{const p=(n)=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;};
           const days=["CN","T2","T3","T4","T5","T6","T7"];
           const y=calMonth.getFullYear(),m=calMonth.getMonth();
@@ -1467,7 +1467,7 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
             <div style={{position:"relative"}}>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{setTimeF("today");setShowCal(false);}} style={{padding:"7px 16px",borderRadius:16,border:"none",cursor:"pointer",background:timeF==="today"?C.blue:C.divider,color:timeF==="today"?"white":C.textSec,fontWeight:700,fontSize:13,fontFamily:font,flexShrink:0}}>Hôm nay</button>
-                <button onClick={()=>{setShowCal(s=>!s);setPicking("from");}} style={{flex:1,padding:"7px 14px",borderRadius:16,border:`1.5px solid ${timeF==="range"?C.blue:C.divider}`,cursor:"pointer",background:timeF==="range"?C.blueLight:"white",color:timeF==="range"?C.blue:C.textSec,fontWeight:timeF==="range"?700:500,fontSize:13,fontFamily:font,textAlign:"center"}}>📅 {label}</button>
+                <button onClick={()=>{setShowCal(s=>!s);setPicking("from");}} style={{flex:1,padding:"7px 14px",borderRadius:16,border:`1.5px solid ${timeF==="range"?C.blue:C.divider}`,cursor:"pointer",background:timeF==="range"?C.blueLight:"white",color:timeF==="range"?C.blue:C.textSec,fontWeight:timeF==="range"?700:500,fontSize:13,fontFamily:font,textAlign:"center"}}>{label}</button>
               </div>
               {showCal&&(
                 <div style={{position:"absolute",top:"110%",left:0,right:0,background:"white",borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.18)",zIndex:100,padding:"12px 8px"}}>
