@@ -1949,11 +1949,19 @@ function App(){
   const allUsers=useMemo(()=>{if(allGsUsers.length>0){const gsIds=new Set(allGsUsers.map(u=>u.id));const nc=customers.filter(c=>!gsIds.has(c.id));return [...allGsUsers,...nc];}return [SELLER,...customers];},[allGsUsers,customers]);
   useEffect(()=>{if(!api) return;setLoadingAccounts(true);api.get("getTaiKhoan").then(r=>{if(r?.data?.length){setAllGsUsers(r.data);const custs=r.data.filter(u=>u.loai==="customer").map(u=>({...u,avatar:u.avatar||avatarCache.get(u.id)||""}));custs.forEach(u=>{if(u.avatar) avatarCache.set(u.id,u.avatar);});setCustomers(custs);}}).catch(()=>{}).finally(()=>setLoadingAccounts(false));},[api]);
   useEffect(()=>{if(!api||!user) return;(async()=>{try{
-    // ⚡ 1 lần gọi duy nhất thay vì 3 — giảm round-trip, nhanh hơn rõ rệt
+    // ⚡ Ưu tiên gọi getAll (1 round-trip); nếu backend chưa hỗ trợ → fallback 3 request riêng
     const r=await api.get("getAll");
-    if(r?.sanPham?.length) setProducts(r.sanPham);
-    if(r?.donHang?.length) setOrders(r.donHang);
-    if(r?.congNo?.length) setDebts(r.congNo);
+    const gotAny = (r?.sanPham?.length || r?.donHang?.length || r?.congNo?.length);
+    if(gotAny && !r?.error){
+      if(r?.sanPham?.length) setProducts(r.sanPham);
+      if(r?.donHang?.length) setOrders(r.donHang);
+      if(r?.congNo?.length) setDebts(r.congNo);
+    } else {
+      const [p,o,d]=await Promise.all([api.get("getSanPham"),api.get("getDonHang"),api.get("getCongNo")]);
+      if(p?.data?.length) setProducts(p.data);
+      if(o?.data?.length) setOrders(o.data);
+      if(d?.data?.length) setDebts(d.data);
+    }
   }catch(e){console.error(e);}})();},[api,user?.id]);
   // Local mode: lưu thay đổi vào localStorage để không mất khi reload (chỉ khi chưa nối backend)
   
