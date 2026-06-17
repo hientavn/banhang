@@ -862,9 +862,11 @@ function SellerProfile({currentUser,onLogout,onUpdateUser,orders,debts,customers
             <div style={{flex:1}}><div style={{fontSize:11,color:C.textMuted,fontWeight:600,marginBottom:2}}>Tài khoản</div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{currentUser.username}</div></div>
           </div>
         </Card>
-        {/*GS config hidden*/}
-        <div style={{fontSize:11,color:C.textMuted,textAlign:"center",marginBottom:8}}>
-          </div>
+        <Card style={{padding:"14px 16px",marginBottom:12}}>
+          <div style={{fontWeight:700,fontSize:13,color:C.text,marginBottom:8}}>⚙️ Link Google Apps Script</div>
+          <Inp value={scriptUrl||""} onChange={onSaveUrl} placeholder="https://script.google.com/macros/s/.../exec" style={{marginBottom:8,fontSize:12}}/>
+          <div style={{fontSize:11,color:C.textMuted,textAlign:"center"}}>Dán link mới rồi tải lại trang để áp dụng</div>
+        </Card>
         <button onClick={onLogout} style={{width:"100%",padding:12,borderRadius:14,border:`2px solid ${C.red}`,background:"transparent",color:C.red,fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:font}}>🚪 Đăng xuất</button>
       </div>
       <Toast msg={toast}/>
