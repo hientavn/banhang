@@ -749,7 +749,7 @@ function SellerTabs({active,onChange}){
   return(
     <div style={{display:"flex",background:C.card,borderBottom:`2px solid ${C.blue}`,position:"sticky",top:0,zIndex:50,boxShadow:"0 2px 8px rgba(21,101,192,0.1)"}}>
       {tabs.map(t=>(
-        <button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:"8px 1px 6px",border:"none",cursor:"pointer",fontFamily:font,background:active===t.id?C.blue:"transparent",color:active===t.id?"white":C.textSec,fontWeight:active===t.id?800:500,transition:"all 0.18s",minWidth:0,overflow:"hidden"}}>
+        <button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:"8px 1px 6px",border:"none",borderBottom:active===t.id?`2.5px solid ${C.blue}`:"2.5px solid transparent",cursor:"pointer",fontFamily:font,background:"transparent",color:active===t.id?C.blue:C.textSec,fontWeight:active===t.id?800:500,transition:"all 0.18s",minWidth:0,overflow:"hidden"}}>
           <div style={{fontSize:15}}>{t.ic}</div>
           <div style={{fontSize:8,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.lb}</div>
         </button>
@@ -885,9 +885,8 @@ function PrintModal({data,onClose}){
   return(
     <Modal onClose={onClose}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div><div style={{fontWeight:800,fontSize:15,color:C.blue}}>{data.title}</div><div style={{fontSize:11,color:C.textMuted}}>{data.date}</div></div>
-        <div style={{display:"flex",gap:6}}>
-          <Btn sm outline color={C.blue} onClick={async()=>{
+        <button onClick={onClose} style={{width:32,height:32,borderRadius:"50%",border:"none",background:C.divider,color:C.textSec,fontSize:16,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        <Btn sm outline color={C.blue} onClick={async()=>{
             if(!window.html2canvas||!ref.current) return;
             const cv=await window.html2canvas(ref.current,{scale:2,useCORS:true,backgroundColor:"#fff"});
             cv.toBlob(async(blob)=>{
@@ -903,7 +902,6 @@ function PrintModal({data,onClose}){
               setTimeout(()=>URL.revokeObjectURL(url),1000);
             },"image/jpeg",0.9);
           }}>🖼️ Chia sẻ ảnh</Btn>
-        </div>
       </div>
       <div ref={ref} style={{background:"white",padding:"8px 4px"}}>
         <div style={{fontWeight:800,fontSize:13,color:C.blue,marginBottom:6}}>{data.title} — {data.date}</div>
@@ -1106,21 +1104,32 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
       {/* Detail modal */}
       {sel&&(
         <Modal onClose={()=>setSel(null)}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
             <div style={{fontWeight:800,fontSize:16,color:C.orange,flex:1}}>{sel.id}</div>
             <Badge label="⏳ Chờ duyệt" color={C.orange} bg={C.orangeLight}/>
             <button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
           </div>
-          <div style={{marginBottom:12}}><div style={{fontSize:11,color:C.textMuted}}>Khách hàng</div><div style={{fontWeight:800,fontSize:16,color:C.text}}>{sel.tenKH}</div><div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(sel.ngay)}</div></div>
+          <div style={{fontSize:13,marginBottom:8}}><b>KH: {sel.tenKH}</b> · {sel.id} · {fmtDate(sel.ngay)}</div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,fontSize:11,fontWeight:700,color:C.textMuted,padding:"4px 0"}}>
+            <span>#</span><span>Tên</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right"}}>Đ.Giá</span><span style={{textAlign:"right"}}>T.Tiền</span>
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{maxHeight:380,overflowY:"auto"}}>
           {sel.items?.map((it,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}>
-              <div><div style={{fontWeight:700,color:C.text}}>{it.ten}{it.ghiChu&&<span style={{fontSize:11,color:C.textMuted}}> 📝 {it.ghiChu}</span>}</div><div style={{color:C.textSec,fontSize:12}}>{fmt(it.gia)} × {it.sl}</div></div>
-              <div style={{fontWeight:800,color:C.orange}}>{fmt(it.gia*it.sl)}</div>
+            <div key={i} style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,padding:"6px 0",borderBottom:`1px solid ${C.divider}`,alignItems:"start",fontSize:13}}>
+              <span style={{color:C.textMuted}}>{i+1}.</span>
+              <span style={{color:C.text,minWidth:0,overflowWrap:"break-word"}}>{it.ten}{it.ghiChu&&<div style={{fontSize:10,color:C.textMuted}}>📝 {it.ghiChu}</div>}</span>
+              <span style={{textAlign:"right",color:C.textSec}}>{it.sl}</span>
+              <span style={{textAlign:"right",color:C.textMuted,fontSize:12}}>{fmt(it.gia)}</span>
+              <span style={{textAlign:"right",fontWeight:700,color:C.orange}}>{fmt(it.gia*it.sl)}</span>
             </div>
           ))}
-          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginBottom:10}}>
-            <span style={{fontWeight:800,fontSize:16}}>Tổng tiền</span>
-            <span style={{fontWeight:900,fontSize:20,color:C.orange}}>{fmt(sel.tongTien)}</span>
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginTop:4,marginBottom:8}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+            <div style={{fontWeight:800,fontSize:15}}>Tổng {sel.items?.reduce((a,it)=>a+(it.sl||0),0)} SP</div>
+            <div style={{fontWeight:900,fontSize:19,color:C.orange}}>{fmt(sel.tongTien)}</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <Btn onClick={async()=>{
@@ -1260,7 +1269,7 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
         <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"10px 12px",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>
         {/* Row 1: Khách + Ngày giờ + Cart */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <AutocompleteKH customers={customers} value={selKH} onChange={setSelKH} walkIn placeholder="👤 Khách lẻ — tìm khách..."/>
+          <AutocompleteKH customers={customers} value={selKH} onChange={setSelKH} walkIn placeholder="Chọn khách..."/>
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{color:"white",fontSize:11,fontWeight:700,lineHeight:1.3}}>{(()=>{const n=new Date();return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getFullYear()).slice(-2)} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;})()}</div>
             <div style={{color:"rgba(255,255,255,0.75)",fontSize:10}}></div>
@@ -1285,13 +1294,13 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
                 <div style={{fontSize:13,color:C.blue,fontWeight:800}}>{fmt(p.gia)}</div>
                 {p.nhan&&<div style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>{p.nhan}</div>}
               </div></div>
-            {(qty===0&&editingQty!==p.id)?<button onClick={()=>add(p)} style={{background:C.blue,color:"white",border:"none",borderRadius:"50%",width:34,height:34,cursor:"pointer",fontSize:20,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
-            :<div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-              <button onClick={()=>dec(p)} style={{background:"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-              {editingQty===p.id?<input autoFocus inputMode="numeric" value={cart[p.id]||0} onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,"");setCart(cc=>({...cc,[p.id]:v===""?0:Math.min(999,Math.max(0,parseInt(v)||0))}));}} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>({...cc,[p.id]:v}));setEditingQty(null);}} onFocus={e=>e.target.select()} onKeyDown={e=>e.key==="Enter"&&setEditingQty(null)} style={{width:48,textAlign:"center",fontWeight:800,color:C.blue,fontSize:13,border:"none",outline:"none",fontFamily:font,background:"transparent"}}/>
-              :<span onClick={()=>setEditingQty(p.id)} style={{fontWeight:800,color:C.blue,minWidth:44,textAlign:"center",fontSize:14,cursor:"text"}}>{qty}</span>}
-              <button onClick={()=>add(p)} style={{background:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-            </div>}
+            {/* ⚡ Luôn render đủ 3 phần cố định — tránh layout nhảy khi qty 0→1 */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+              <button onClick={()=>dec(p)} disabled={qty===0} style={{background:qty===0?"transparent":"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:qty===0?"default":"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",opacity:qty===0?0:1,visibility:qty===0?"hidden":"visible"}}>−</button>
+              {editingQty===p.id?<input autoFocus inputMode="numeric" value={cart[p.id]||0} onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,"");setCart(cc=>({...cc,[p.id]:v===""?0:Math.min(999,Math.max(0,parseInt(v)||0))}));}} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>({...cc,[p.id]:v}));setEditingQty(null);}} onFocus={e=>e.target.select()} onKeyDown={e=>e.key==="Enter"&&setEditingQty(null)} style={{width:28,textAlign:"center",fontWeight:800,color:C.blue,fontSize:14,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+              :<span onClick={()=>qty>0&&setEditingQty(p.id)} style={{fontWeight:800,color:qty===0?C.textMuted:C.blue,width:28,display:"inline-block",textAlign:"center",fontSize:14,cursor:qty>0?"text":"default"}}>{qty>0?qty:""}</span>}
+              <button onClick={()=>add(p)} style={{background:qty===0?C.blue:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:17,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.15s"}}>+</button>
+            </div>
           </div>
         );})}
         {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
@@ -1317,8 +1326,8 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
                   style={{width:76,textAlign:"right",padding:"3px 6px",border:`1px solid ${C.border}`,borderRadius:8,fontSize:13,fontWeight:700,color:C.blue,fontFamily:font,outline:"none"}}/>
                 <span style={{color:C.textMuted,fontSize:13}}>×</span>
                 <button onClick={()=>dec(p)} style={{width:26,height:26,borderRadius:"50%",border:"none",background:"#E2E8F0",cursor:"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>−</button>
-                {editingQty===`cart_${p.id}`?<input autoFocus inputMode="numeric" defaultValue={cart[p.id]||""} onFocus={e=>e.target.select()} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>v>0?{...cc,[p.id]:v}:Object.fromEntries(Object.entries(cc).filter(([k])=>k!==p.id)));setEditingQty(null);}} onKeyDown={e=>{if(e.key==="Enter") e.target.blur();if(e.key==="Escape") setEditingQty(null);}} style={{width:52,textAlign:"center",fontWeight:800,color:C.blue,fontSize:13,border:"none",outline:"none",fontFamily:font,background:"transparent",flexShrink:0}}/>
-                :<span onClick={()=>setEditingQty(`cart_${p.id}`)} style={{fontWeight:800,color:C.blue,minWidth:40,textAlign:"center",fontSize:14,cursor:"text",flexShrink:0}}>{cart[p.id]}</span>}
+                {editingQty===`cart_${p.id}`?<input autoFocus inputMode="numeric" defaultValue={cart[p.id]||""} onFocus={e=>e.target.select()} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>v>0?{...cc,[p.id]:v}:Object.fromEntries(Object.entries(cc).filter(([k])=>k!==p.id)));setEditingQty(null);}} onKeyDown={e=>{if(e.key==="Enter") e.target.blur();if(e.key==="Escape") setEditingQty(null);}} style={{width:44,textAlign:"center",fontWeight:800,color:C.blue,fontSize:14,border:"none",outline:"none",fontFamily:font,background:"transparent",flexShrink:0,padding:0}}/>
+                :<span onClick={()=>setEditingQty(`cart_${p.id}`)} style={{fontWeight:800,color:C.blue,width:44,display:"inline-block",textAlign:"center",fontSize:14,cursor:"text",flexShrink:0}}>{cart[p.id]}</span>}
                 <button onClick={()=>add(p)} style={{width:26,height:26,borderRadius:"50%",border:"none",background:C.green,color:"white",cursor:"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
                 <span style={{color:C.textMuted,fontSize:13}}>=</span>
                 <div style={{fontWeight:800,color:C.blue,fontSize:14,flex:1,textAlign:"right"}}>{fmt(gia*cart[p.id])}</div>
@@ -1465,12 +1474,24 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
   },[doneFiltered]);
   const doneTotals=doneFiltered.reduce((a,o)=>({sl:a.sl+(o.items?.reduce((s,i)=>s+i.sl,0)||0),thu:a.thu+o.tongTien,lai:a.lai+(o.tongTien-o.tongVon)}),{sl:0,thu:0,lai:0});
   const OCard=({o,i})=>(
-    <Card onClick={()=>setSel(o)} style={{padding:"12px 14px",border:`1.5px solid ${C.border}`,background:"white",borderLeft:`4px solid ${C.green}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-        <div><div style={{fontSize:10,color:C.textMuted,fontWeight:600,marginBottom:2}}>#{i+1}</div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontWeight:800,fontSize:12,color:C.blue}}>{o.id}</span><Badge label="✅ Đã giao" color={C.green} bg={C.greenLight} size={10}/></div><div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div><div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div></div>
-        <div style={{textAlign:"right"}}><div style={{fontWeight:900,fontSize:16,color:C.blue}}>{fmt(o.tongTien)}</div><div style={{fontSize:11,color:C.green,fontWeight:600}}>+{fmt(o.tongTien-o.tongVon)} lãi</div></div>
+    <Card onClick={()=>setSel(o)} style={{padding:"14px 16px",border:`1.5px solid ${C.border}`,background:"white",borderLeft:`4px solid ${C.green}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+        <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden"}}>
+          <span style={{fontSize:11,color:C.textMuted,fontWeight:600,flexShrink:0}}>#{i+1}</span>
+          <span style={{fontWeight:800,fontSize:14,color:C.blue,whiteSpace:"nowrap"}}>{o.id}</span>
+          <Badge label="✅ Đã giao" color={C.green} bg={C.greenLight} size={11}/>
+        </div>
+        <div style={{fontWeight:900,fontSize:17,color:C.blue,flexShrink:0,marginLeft:10}}>{fmt(o.tongTien)}</div>
       </div>
-      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{o.items?.slice(0,3).map((it,i)=><span key={i} style={{background:C.divider,padding:"2px 8px",borderRadius:8,fontSize:11,color:C.textSec,fontWeight:600}}>{it.ten.length>12?it.ten.slice(0,12)+"…":it.ten} ×{it.sl}</span>)}{(o.items?.length||0)>3&&<span style={{fontSize:11,color:C.textMuted}}>+{o.items.length-3} sp</span>}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+        <div style={{fontSize:13,color:C.text,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>
+          {o.tenKH} <span style={{color:C.textMuted,fontWeight:500}}>· {fmtDate(o.ngay)} · {o.items?.length||0} sp</span>
+        </div>
+        <div style={{fontSize:12,color:C.green,fontWeight:700,flexShrink:0,marginLeft:10}}>+{fmt(o.tongTien-o.tongVon)}</div>
+      </div>
+      <div style={{fontSize:12,color:C.textSec,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+        {o.items?.map(it=>`${it.ten} ×${it.sl}`).join(", ")||"—"}
+      </div>
     </Card>
   );
   return(
@@ -1545,10 +1566,32 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
       </div>
       {sel&&(
         <Modal onClose={()=>setSel(null)}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div><Badge label="✅ Đã giao" color={C.green} bg={C.greenLight}/><button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
-          <div style={{marginBottom:12}}><div style={{fontSize:11,color:C.textMuted}}>Khách hàng</div><div style={{fontWeight:800,fontSize:16,color:C.text}}>{sel.tenKH}</div><div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{fmtDate(sel.ngay)}</div></div>
-          {sel.items?.map((it,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.divider}`}}><div><div style={{fontWeight:700,color:C.text}}>{it.ten}{it.ghiChu&&<span style={{fontSize:11,color:C.textMuted}}> 📝 {it.ghiChu}</span>}</div><div style={{color:C.textSec,fontSize:12}}>{fmt(it.gia)} × {it.sl}</div></div><div style={{fontWeight:800,color:C.blue}}>{fmt(it.gia*it.sl)}</div></div>))}
-          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16}}>Tổng tiền</div><div style={{fontSize:12,color:C.green,fontWeight:600}}>Lợi nhuận: +{fmt(sel.tongTien-sel.tongVon)}</div></div><div style={{fontWeight:900,fontSize:20,color:C.blue}}>{fmt(sel.tongTien)}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{sel.id}</div><Badge label="✅ Đã giao" color={C.green} bg={C.greenLight}/><button onClick={()=>setSel(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button></div>
+          <div style={{fontSize:13,marginBottom:8}}><b>KH: {sel.tenKH}</b> · {sel.id} · {fmtDate(sel.ngay)}</div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,fontSize:11,fontWeight:700,color:C.textMuted,padding:"4px 0"}}>
+            <span>#</span><span>Tên</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right"}}>Đ.Giá</span><span style={{textAlign:"right"}}>T.Tiền</span>
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{maxHeight:380,overflowY:"auto"}}>
+          {sel.items?.map((it,i)=>(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,padding:"6px 0",borderBottom:`1px solid ${C.divider}`,alignItems:"start",fontSize:13}}>
+              <span style={{color:C.textMuted}}>{i+1}.</span>
+              <span style={{color:C.text,minWidth:0,overflowWrap:"break-word"}}>{it.ten}{it.ghiChu&&<div style={{fontSize:10,color:C.textMuted}}>📝 {it.ghiChu}</div>}</span>
+              <span style={{textAlign:"right",color:C.textSec}}>{it.sl}</span>
+              <span style={{textAlign:"right",color:C.textMuted,fontSize:12}}>{fmt(it.gia)}</span>
+              <span style={{textAlign:"right",fontWeight:700,color:C.blue}}>{fmt(it.gia*it.sl)}</span>
+            </div>
+          ))}
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginTop:4,marginBottom:8}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+            <div style={{fontWeight:800,fontSize:15}}>Tổng {sel.items?.reduce((a,it)=>a+(it.sl||0),0)} SP</div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontWeight:900,fontSize:19,color:C.blue}}>{fmt(sel.tongTien)}</div>
+              <div style={{fontSize:11,color:C.green,fontWeight:600}}>Lợi nhuận: +{fmt(sel.tongTien-sel.tongVon)}</div>
+            </div>
+          </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <Btn onClick={async()=>{let orderToEdit=sel;if(api){try{const res=await api.get("getDonHang");if(res?.data){const fresh=res.data.find(o=>o.id===sel.id);if(fresh) orderToEdit=fresh;}}catch(e){}}onEditOrder(orderToEdit);setSel(null);}} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
             <Btn onClick={()=>{setInvoiceOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
@@ -1569,7 +1612,7 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
 /* ── DEBT TAB ───────────────────────────────────────────────── */
 /* ── AUTOCOMPLETE KHÁCH HÀNG (dùng chung tab Bán + tab Nợ) ──── */
 // walkIn: thêm lựa chọn "Khách lẻ" (id "le") ở đầu danh sách — dùng cho tab Bán
-function AutocompleteKH({customers,value,onChange,placeholder="🔍 Tìm khách hàng...",walkIn=false,inputStyle={}}){
+function AutocompleteKH({customers,value,onChange,placeholder="Tìm khách hàng...",walkIn=false,inputStyle={}}){
   const [open,setOpen]=useState(false);
   const [q,setQ]=useState("");
   const ALL=walkIn?[{id:"le",ten:"Khách lẻ",username:"",avatar:""},...customers]:customers;
@@ -1577,10 +1620,12 @@ function AutocompleteKH({customers,value,onChange,placeholder="🔍 Tìm khách 
   const filtered=ALL.filter(k=>!q||k.ten.toLowerCase().includes(q.toLowerCase())||(k.username||"").toLowerCase().includes(q.toLowerCase()));
   return(
     <div style={{position:"relative",flex:1,minWidth:0}}>
+      <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none",zIndex:1}}>👤</span>
       <input value={open?q:(sel?sel.ten:"")} onChange={e=>{setQ(e.target.value);if(!open)setOpen(true);}}
         onFocus={()=>{setOpen(true);setQ("");}} onBlur={()=>setTimeout(()=>setOpen(false),200)}
         placeholder={placeholder}
-        style={{width:"100%",padding:"8px 10px",borderRadius:10,border:"none",fontSize:13,fontFamily:font,outline:"none",boxSizing:"border-box",...inputStyle}}/>
+        style={{width:"100%",padding:"8px 26px 8px 32px",borderRadius:10,border:"none",fontSize:13,fontWeight:700,fontFamily:font,outline:"none",boxSizing:"border-box",...inputStyle}}/>
+      <span style={{position:"absolute",right:9,top:"50%",transform:"translateY(-50%)",fontSize:11,color:inputStyle.color||C.textMuted,pointerEvents:"none",opacity:0.7}}>▾</span>
       {open&&(
         <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"white",borderRadius:12,boxShadow:"0 8px 24px rgba(0,0,0,0.18)",zIndex:200,maxHeight:220,overflowY:"auto"}}>
           {filtered.length===0&&<div style={{padding:"10px 12px",fontSize:13,color:C.textMuted}}>Không có khách</div>}
@@ -1597,11 +1642,12 @@ function AutocompleteKH({customers,value,onChange,placeholder="🔍 Tìm khách 
   );
 }
 
-function DebtTab({customers,debts,setDebts,api,role,currentUser}){
+function DebtTab({customers,debts,setDebts,orders=[],api,role,currentUser}){
   const debtPrintRef=useRef(null);
   const debtShareRef=useRef(null);
   const [selKH,setSelKH]=useState("");const [amount,setAmount]=useState("");
   const [toast,setToast]=useState("");const [detail,setDetail]=useState(null);
+  const [selOrder,setSelOrder]=useState(null); // đơn hàng đang xem chi tiết (mở từ giao dịch công nợ)
   const [busyDebt,setBusyDebt]=useState(false);
   const [sortBy,setSortBy]=useState("total"); // total|count|days
   const [sortDir,setSortDir]=useState("desc"); // asc|desc
@@ -1686,7 +1732,7 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
         </div>
         {isSeller&&<div style={{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"10px 12px"}}>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.8)",fontWeight:700,marginBottom:8}}>⚡ LẬP PHIẾU NHANH</div>
-          <AutocompleteKH customers={customers} value={selKH} onChange={id=>{setSelKH(id);if(id&&debtMap[id]&&debtMap[id].total>0) setAmount(String(debtMap[id].total));else setAmount("");}} placeholder="🔍 Tìm khách hàng..."/>
+          <AutocompleteKH customers={customers} value={selKH} onChange={id=>{setSelKH(id);if(id&&debtMap[id]&&debtMap[id].total>0) setAmount(String(debtMap[id].total));else setAmount("");}} placeholder="Tìm khách hàng..."/>
           <div style={{height:6}}/>
           <div style={{display:"flex",gap:8}}><MoneyInput value={amount} onChange={setAmount} placeholder="Số tiền..." style={{flex:1}}/><Btn onClick={()=>addDebtFn("thu")} color={C.green} disabled={busyDebt}>💵 Thu</Btn><Btn onClick={()=>addDebtFn("no")} color={C.red} disabled={busyDebt}>📌 Nợ</Btn></div>
         </div>}
@@ -1759,18 +1805,19 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
               <div style={{fontWeight:900,fontSize:forShare?16:18,color:C.blue}}>{shopName}</div>
               <div style={{borderBottom:"2px solid #222",margin:"8px 0"}}/>
             </div>
-            {/* KH + tổng nợ */}
-            <div style={{marginBottom:8}}>
-              <div style={{fontSize:13,color:C.text,marginBottom:4}}>
-                <b>KH: {detail.ten}</b> · {new Date().toLocaleDateString("vi")}
+            {/* KH + tổng nợ — số tiền & trạng thái dồn sang phải */}
+            <div style={{marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:8}}>
+              <div style={{fontSize:13,color:C.text}}>
+                <b>KH: {detail.ten}</b><br/>
+                <span style={{fontSize:11,color:C.textMuted}}>{new Date().toLocaleDateString("vi")}</span>
               </div>
-              <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                <span style={{fontWeight:900,fontSize:28,color:isOC?C.red:isCC?C.green:C.textMuted,letterSpacing:-0.5}}>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontWeight:900,fontSize:26,color:isOC?C.red:isCC?C.green:C.textMuted,letterSpacing:-0.5,lineHeight:1.1}}>
                   {fmt(Math.abs(computedTotal))}
-                </span>
-                <span style={{fontSize:12,fontWeight:700,color:isOC?C.red:isCC?C.green:C.textMuted}}>
+                </div>
+                <div style={{fontSize:11,fontWeight:700,color:isOC?C.red:isCC?C.green:C.textMuted}}>
                   {isOC?"⚠️ Còn nợ":isCC?"💚 Dư tiền":"✅ Đã xong"}
-                </span>
+                </div>
               </div>
             </div>
             <div style={{borderTop:"1px dashed #aaa",marginBottom:6}}/>
@@ -1781,14 +1828,16 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
               <span style={{textAlign:"right"}}>Số tiền</span>
             </div>
             <div style={{borderBottom:"1px dashed #aaa",marginBottom:4}}/>
-            {/* Các dòng giao dịch */}
-            {withBalance.map((t,i)=>{
+            {/* Các dòng giao dịch — giới hạn ~10 dòng hiển thị, cuộn nếu dài hơn (chỉ ở view màn hình) */}
+            <div style={forShare?{}:{maxHeight:520,overflowY:"auto"}}>
+            {(forShare?withBalance.slice(0,10):withBalance).map((t,i)=>{
               const isNo=t.loai==="no";
+              const linkedOrder=!forShare&&t.maDon?orders.find(o=>o.id===t.maDon):null;
               return(
-                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 72px 58px",padding:"7px 2px",borderBottom:"1px solid #f0f0f0",alignItems:"center"}}>
+                <div key={i} onClick={()=>linkedOrder&&setSelOrder(linkedOrder)} style={{display:"grid",gridTemplateColumns:"1fr 72px 58px",padding:"7px 2px",borderBottom:"1px solid #f0f0f0",alignItems:"center",cursor:linkedOrder?"pointer":"default",background:linkedOrder?"#FAFBFF":"transparent"}}>
                   <div>
                     <div style={{fontWeight:800,fontSize:13,color:isNo?C.red:C.green}}>
-                      {isNo?"📌 Ghi nợ":"💵 Thu tiền"}
+                      {isNo?"📌 Ghi nợ":"💵 Thu tiền"}{linkedOrder&&<span style={{color:C.blue,fontWeight:700}}> ›</span>}
                     </div>
                     <div style={{fontSize:10,color:C.textMuted,marginTop:1}}>{getDesc(t)}</div>
                   </div>
@@ -1804,20 +1853,24 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
                 </div>
               );
             })}
+            </div>
+            {forShare&&<div style={{textAlign:"center",fontSize:12,color:C.textMuted,fontStyle:"italic",marginTop:10,paddingTop:8,borderTop:"1px dashed #aaa"}}>Xin cảm ơn quý khách</div>}
           </div>
         );
 
         return(
           <Modal onClose={()=>setDetail(null)}>
+            {/* Top bar: X đóng (trái) — Chia sẻ ảnh (phải) */}
+            <div style={{position:"sticky",top:-20,marginTop:-20,marginLeft:-20,marginRight:-20,padding:"10px 14px",background:"white",zIndex:30,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.divider}`,borderRadius:"20px 20px 0 0"}}>
+              <button onClick={()=>setDetail(null)} style={{width:30,height:30,borderRadius:"50%",border:"none",background:"#F1F5F9",color:C.textSec,fontSize:15,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+              <button onClick={doShare} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:20,border:"none",background:"#4CAF50",color:"white",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:font}}>🖼️ Chia sẻ ảnh</button>
+            </div>
+
             {/* View chi tiết */}
             <ReceiptContent forShare={false}/>
 
-            {/* Nút chia sẻ */}
-            <button onClick={doShare} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"none",background:"#4CAF50",color:"white",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:font,margin:"10px 0 6px"}}>🖼️ Chia sẻ ảnh</button>
-            <button onClick={()=>setDetail(null)} style={{width:"100%",padding:"11px 0",borderRadius:10,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:font}}>ĐÓNG</button>
-
-            {/* Form thu/ghi nợ nhanh */}
-            {isSeller&&<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+            {/* Form thu/ghi nợ nhanh — cố định luôn hiển thị dưới */}
+            {isSeller&&<div style={{position:"sticky",bottom:-20,marginBottom:-20,marginLeft:-20,marginRight:-20,padding:"10px 14px",background:"white",borderTop:`1px solid ${C.divider}`,display:"flex",flexDirection:"column",gap:8,borderRadius:"0 0 20px 20px"}}>
               <MoneyInput value={detail.editAmount||""} onChange={v=>setDetail(d=>({...d,editAmount:v}))} placeholder="Số tiền..."/>
               <div style={{display:"flex",gap:8}}>
                 <Btn onClick={()=>addDebtFromDetail("thu")} color={C.green} style={{flex:1}} disabled={busyDebt}>{busyDebt?"⏳...":"💵 Thu tiền"}</Btn>
@@ -1831,7 +1884,44 @@ function DebtTab({customers,debts,setDebts,api,role,currentUser}){
             </div>
           </Modal>
         );
-      })()}    <Toast msg={toast}/>
+      })()}
+
+      {/* Chi tiết đơn hàng — mở từ dòng giao dịch công nợ có liên kết maDon */}
+      {selOrder&&(
+        <Modal onClose={()=>setSelOrder(null)}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+            <div style={{fontWeight:800,fontSize:16,color:C.blue,flex:1}}>{selOrder.id}</div>
+            <Badge label="✅ Đã giao" color={C.green} bg={C.greenLight}/>
+            <button onClick={()=>setSelOrder(null)} style={{background:C.divider,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          </div>
+          <div style={{fontSize:13,marginBottom:8}}><b>KH: {selOrder.tenKH}</b> · {selOrder.id} · {fmtDate(selOrder.ngay)}</div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,fontSize:11,fontWeight:700,color:C.textMuted,padding:"4px 0"}}>
+            <span>#</span><span>Tên</span><span style={{textAlign:"right"}}>SL</span><span style={{textAlign:"right"}}>Đ.Giá</span><span style={{textAlign:"right"}}>T.Tiền</span>
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginBottom:4}}/>
+          <div style={{maxHeight:380,overflowY:"auto"}}>
+          {selOrder.items?.map((it,i)=>(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"22px 1fr 34px 56px 64px",gap:4,padding:"6px 0",borderBottom:`1px solid ${C.divider}`,alignItems:"start",fontSize:13}}>
+              <span style={{color:C.textMuted}}>{i+1}.</span>
+              <span style={{color:C.text,minWidth:0,overflowWrap:"break-word"}}>{it.ten}{it.ghiChu&&<div style={{fontSize:10,color:C.textMuted}}>📝 {it.ghiChu}</div>}</span>
+              <span style={{textAlign:"right",color:C.textSec}}>{it.sl}</span>
+              <span style={{textAlign:"right",color:C.textMuted,fontSize:12}}>{fmt(it.gia)}</span>
+              <span style={{textAlign:"right",fontWeight:700,color:C.blue}}>{fmt(it.gia*it.sl)}</span>
+            </div>
+          ))}
+          </div>
+          <div style={{borderTop:"1px dashed #999",marginTop:4,marginBottom:0}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:8}}>
+            <div style={{fontWeight:800,fontSize:15}}>Tổng {selOrder.items?.reduce((a,it)=>a+(it.sl||0),0)} SP</div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontWeight:900,fontSize:19,color:C.blue}}>{fmt(selOrder.tongTien)}</div>
+              <div style={{fontSize:11,color:C.green,fontWeight:600}}>Lợi nhuận: +{fmt(selOrder.tongTien-selOrder.tongVon)}</div>
+            </div>
+          </div>
+        </Modal>
+      )}
+    <Toast msg={toast}/>
     </div>
   );
 }
@@ -1983,7 +2073,7 @@ function App(){
       <SellerTabs active={tab} onChange={setTab}/>
       {tab==="sell"&&<SellTab products={products} customers={customers} setOrders={setOrders} setDebts={setDebts} api={api} editOrder={editOrder} setEditOrder={setEditOrder}/>}
       {tab==="orders"&&<OrdersTab orders={orders} setOrders={setOrders} debts={debts} setDebts={setDebts} api={api} onEditOrder={startEditOrder} currentUser={user}/>}
-      {tab==="debt"&&<DebtTab customers={customers} debts={debts} setDebts={setDebts} api={api} role="seller" currentUser={user}/>}
+      {tab==="debt"&&<DebtTab customers={customers} debts={debts} setDebts={setDebts} orders={orders} api={api} role="seller" currentUser={user}/>}
       {tab==="customers"&&<CustomersTab customers={customers} setCustomers={setCustomers} orders={orders} debts={debts} api={api}/>}
       {tab==="nguon"&&<NguonHangTab orders={orders} products={products} setOrders={setOrders} setDebts={setDebts} api={api} onEditOrder={startEditOrder}/>}
       {tab==="profile"&&<SellerProfile currentUser={user} onLogout={logout} onUpdateUser={updateUser} orders={orders} debts={debts} customers={customers} scriptUrl={scriptUrl} onSaveUrl={setScriptUrl} api={api}/>}
