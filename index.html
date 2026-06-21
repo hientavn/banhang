@@ -1212,6 +1212,12 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
   const [cartNote,setCartNote]=useState({});
   const [cartGia,setCartGia]=useState({});
   const [editingPrice,setEditingPrice]=useState(null); // `${p.id}_gia` hoặc `${p.id}_von`
+  const [isDesktop,setIsDesktop]=useState(()=>typeof window!=="undefined"&&window.innerWidth>=1024);
+  useEffect(()=>{
+    const onResize=()=>setIsDesktop(window.innerWidth>=1024);
+    window.addEventListener("resize",onResize);
+    return ()=>window.removeEventListener("resize",onResize);
+  },[]);
   const savePrice=async(p,field,val)=>{
     const num=Math.max(0,parseInt(String(val).replace(/[^0-9]/g,""))||0);
     setProducts&&setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:num}:x));
@@ -1304,61 +1310,9 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
       reset();
     }catch(e){notify("❌ Lỗi: "+e.message);}finally{setBusy(false);}
   };
-  return(
-    <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
-      {/* Sticky pinned header + search + pills — gộp 1 khối để khoảng hở không co giãn khi cuộn */}
-      <div style={{position:"sticky",top:48,zIndex:50}}>
-        <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"10px 12px",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>
-        {/* Row 1: Khách + Ngày giờ + Cart */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <AutocompleteKH customers={customers} value={selKH} onChange={setSelKH} walkIn placeholder="Chọn khách..."/>
-          <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{color:"white",fontSize:11,fontWeight:700,lineHeight:1.3}}>{(()=>{const n=new Date();return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getFullYear()).slice(-2)} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;})()}</div>
-            <div style={{color:"rgba(255,255,255,0.75)",fontSize:10}}></div>
-          </div>
-          {totalQty>0&&<button onClick={()=>setShowCart(true)} style={{background:"white",color:C.blue,border:"none",borderRadius:20,padding:"5px 12px",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:font,display:"flex",alignItems:"center",gap:5,flexShrink:0}}>🛒<span style={{background:C.blue,color:"white",borderRadius:9,minWidth:18,height:18,padding:"0 5px",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,boxSizing:"border-box"}}>{totalQty}</span>{fmt(total)}</button>}
-          {totalQty===0&&<div style={{color:"rgba(255,255,255,0.6)",fontSize:11}}>🛒 Trống</div>}
-        </div>
-        </div>
-        <div style={{background:C.card,borderBottom:`1px solid ${C.divider}`}}>
-          <div style={{padding:"10px 10px 4px",position:"relative"}}>
-            <Inp value={search} onChange={setSearch} onFocus={scrollTopOnFocus} onClick={scrollTopOnFocus} placeholder="Tìm sản phẩm..." pfx="🔍" style={{paddingRight:search?36:14}}/>
-          {search&&<button onClick={()=>{setSearch("");scrollTopOnFocus();}} style={{position:"absolute",right:24,top:"50%",transform:"translateY(-50%)",background:"#CBD5E1",border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#64748B",fontWeight:700,zIndex:1}}>✕</button>}
-        </div>
-        <div style={{padding:"0 8px 8px"}}><Pills options={nhomList} value={nhom} onChange={setNhom}/></div>
-
-        </div>
-      </div>
-      <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
-        {filtered.map(p=>{const qty=cart[p.id]||0;return(
-          <div key={p.id} style={{background:C.card,borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:6,boxShadow:C.shadow}}>
-            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}>
-                {p.von>0&&<>
-                  {editingPrice===`${p.id}_von`
-                    ?<input autoFocus inputMode="numeric" defaultValue={p.von} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"von",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:38,flexShrink:0,fontSize:11,color:C.textMuted,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
-                    :<span onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_von`);}} style={{fontSize:11,color:C.textMuted,cursor:"text",width:38,flexShrink:0,display:"inline-block",overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.von)}</span>}
-                  <span style={{color:C.textMuted,fontSize:11,flexShrink:0}}>→</span>
-                </>}
-                {editingPrice===`${p.id}_gia`
-                  ?<input autoFocus inputMode="numeric" defaultValue={p.gia} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"gia",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:46,flexShrink:0,fontSize:13,color:C.blue,fontWeight:800,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
-                  :<div onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_gia`);}} style={{fontSize:13,color:C.blue,fontWeight:800,cursor:"text",width:46,flexShrink:0,overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.gia)}</div>}
-                {p.nhan&&<div style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>{p.nhan}</div>}
-              </div></div>
-            {/* ⚡ Luôn render đủ 3 phần cố định — tránh layout nhảy khi qty 0→1 */}
-            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-              <button onClick={()=>dec(p)} disabled={qty===0} style={{background:qty===0?"transparent":"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:qty===0?"default":"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",opacity:qty===0?0:1,visibility:qty===0?"hidden":"visible"}}>−</button>
-              {editingQty===p.id?<input autoFocus inputMode="numeric" value={cart[p.id]||0} onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,"");setCart(cc=>({...cc,[p.id]:v===""?0:Math.min(999,Math.max(0,parseInt(v)||0))}));}} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>({...cc,[p.id]:v}));setEditingQty(null);}} onFocus={e=>e.target.select()} onKeyDown={e=>e.key==="Enter"&&setEditingQty(null)} style={{width:28,textAlign:"center",fontWeight:800,color:C.blue,fontSize:14,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
-              :<span onClick={()=>qty>0&&setEditingQty(p.id)} style={{fontWeight:800,color:qty===0?C.textMuted:C.blue,width:28,display:"inline-block",textAlign:"center",fontSize:14,cursor:qty>0?"text":"default"}}>{qty>0?qty:""}</span>}
-              <button onClick={()=>add(p)} style={{background:qty===0?C.blue:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:17,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.15s"}}>+</button>
-            </div>
-          </div>
-        );})}
-        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
-      </div>
-      {showCart&&(
-        <Modal onClose={()=>setShowCart(false)} fullBottom>
-          <ModalHeader title="🛒 Giỏ hàng" onClose={()=>setShowCart(false)}/>
-          {cartProds.map(p=>{const gia=getGia(p);return(
+  const cartItemsContent = (
+    <>
+      {cartProds.map(p=>{const gia=getGia(p);return(
             <div key={p.id} style={{padding:"10px 0",borderBottom:`1px solid ${C.divider}`}}>
               <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:6}}>
                 <div style={{fontWeight:700,fontSize:14,color:C.text,flexShrink:0,maxWidth:"50%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.ten}</div>
@@ -1388,6 +1342,10 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
             <div><div style={{fontSize:11,color:C.textMuted}}>Số lượng</div><div style={{fontWeight:700}}>{cartProds.reduce((a,p)=>a+cart[p.id],0)} sp</div></div>
             <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.textMuted}}>Tổng tiền</div><div style={{fontWeight:900,fontSize:18,color:C.blue}}>{fmt(total)}</div></div>
           </div>
+    </>
+  );
+  const cartActionsContent = (
+    <>
           {editOrder
             ?<div style={{display:"flex",gap:8}}>
               <Btn onClick={()=>{setEditOrder(null);reset();}} outline color={C.red} style={{flex:1}}>🗑️ Huỷ</Btn>
@@ -1399,6 +1357,77 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
               <Btn onClick={()=>submit("sell")} color={C.green} style={{flex:1}} disabled={busy}>💰 Bán</Btn>
             </div>
           }
+    </>
+  );
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",paddingBottom:80,fontFamily:font}}>
+      {/* Sticky pinned header + search + pills — gộp 1 khối để khoảng hở không co giãn khi cuộn */}
+      <div style={{position:"sticky",top:48,zIndex:50}}>
+        <div style={{background:`linear-gradient(135deg,${C.blue},${C.teal})`,padding:"10px 12px",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}>
+        {/* Row 1: Khách + Ngày giờ + Cart */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <AutocompleteKH customers={customers} value={selKH} onChange={setSelKH} walkIn placeholder="Chọn khách..."/>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{color:"white",fontSize:11,fontWeight:700,lineHeight:1.3}}>{(()=>{const n=new Date();return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${String(n.getFullYear()).slice(-2)} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;})()}</div>
+            <div style={{color:"rgba(255,255,255,0.75)",fontSize:10}}></div>
+          </div>
+          {!isDesktop&&totalQty>0&&<button onClick={()=>setShowCart(true)} style={{background:"white",color:C.blue,border:"none",borderRadius:20,padding:"5px 12px",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:font,display:"flex",alignItems:"center",gap:5,flexShrink:0}}>🛒<span style={{background:C.blue,color:"white",borderRadius:9,minWidth:18,height:18,padding:"0 5px",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,boxSizing:"border-box"}}>{totalQty}</span>{fmt(total)}</button>}
+          {!isDesktop&&totalQty===0&&<div style={{color:"rgba(255,255,255,0.6)",fontSize:11}}>🛒 Trống</div>}
+        </div>
+        </div>
+        <div style={{background:C.card,borderBottom:`1px solid ${C.divider}`}}>
+          <div style={{padding:"10px 10px 4px",position:"relative"}}>
+            <Inp value={search} onChange={setSearch} onFocus={scrollTopOnFocus} onClick={scrollTopOnFocus} placeholder="Tìm sản phẩm..." pfx="🔍" style={{paddingRight:search?36:14}}/>
+          {search&&<button onClick={()=>{setSearch("");scrollTopOnFocus();}} style={{position:"absolute",right:24,top:"50%",transform:"translateY(-50%)",background:"#CBD5E1",border:"none",borderRadius:"50%",width:20,height:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#64748B",fontWeight:700,zIndex:1}}>✕</button>}
+        </div>
+        <div style={{padding:"0 8px 8px"}}><Pills options={nhomList} value={nhom} onChange={setNhom}/></div>
+
+        </div>
+      </div>
+            <div style={isDesktop?{display:"flex",gap:16,padding:"8px 12px",alignItems:"flex-start"}:{}}>
+      <div style={isDesktop?{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6,marginRight:392}:{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
+        {filtered.map(p=>{const qty=cart[p.id]||0;return(
+          <div key={p.id} style={{background:C.card,borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:6,boxShadow:C.shadow}}>
+            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}>
+                {p.von>0&&<>
+                  {editingPrice===`${p.id}_von`
+                    ?<input autoFocus inputMode="numeric" defaultValue={p.von} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"von",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:38,flexShrink:0,fontSize:11,color:C.textMuted,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+                    :<span onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_von`);}} style={{fontSize:11,color:C.textMuted,cursor:"text",width:38,flexShrink:0,display:"inline-block",overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.von)}</span>}
+                  <span style={{color:C.textMuted,fontSize:11,flexShrink:0}}>→</span>
+                </>}
+                {editingPrice===`${p.id}_gia`
+                  ?<input autoFocus inputMode="numeric" defaultValue={p.gia} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"gia",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:46,flexShrink:0,fontSize:13,color:C.blue,fontWeight:800,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+                  :<div onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_gia`);}} style={{fontSize:13,color:C.blue,fontWeight:800,cursor:"text",width:46,flexShrink:0,overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.gia)}</div>}
+                {p.nhan&&<div style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>{p.nhan}</div>}
+              </div></div>
+            {/* ⚡ Luôn render đủ 3 phần cố định — tránh layout nhảy khi qty 0→1 */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+              <button onClick={()=>dec(p)} disabled={qty===0} style={{background:qty===0?"transparent":"#E2E8F0",border:"none",borderRadius:"50%",width:30,height:30,cursor:qty===0?"default":"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",opacity:qty===0?0:1,visibility:qty===0?"hidden":"visible"}}>−</button>
+              {editingQty===p.id?<input autoFocus inputMode="numeric" value={cart[p.id]||0} onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,"");setCart(cc=>({...cc,[p.id]:v===""?0:Math.min(999,Math.max(0,parseInt(v)||0))}));}} onBlur={e=>{const v=parseInt(e.target.value)||0;setCart(cc=>({...cc,[p.id]:v}));setEditingQty(null);}} onFocus={e=>e.target.select()} onKeyDown={e=>e.key==="Enter"&&setEditingQty(null)} style={{width:28,textAlign:"center",fontWeight:800,color:C.blue,fontSize:14,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+              :<span onClick={()=>qty>0&&setEditingQty(p.id)} style={{fontWeight:800,color:qty===0?C.textMuted:C.blue,width:28,display:"inline-block",textAlign:"center",fontSize:14,cursor:qty>0?"text":"default"}}>{qty>0?qty:""}</span>}
+              <button onClick={()=>add(p)} style={{background:qty===0?C.blue:C.green,color:"white",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:17,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.15s"}}>+</button>
+            </div>
+          </div>
+        );})}
+        {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
+      </div>
+      {isDesktop&&(
+        <div style={{position:"fixed",top:188,right:12,width:380,background:C.card,borderRadius:16,padding:16,boxShadow:C.shadow,maxHeight:"calc(100vh - 200px)",display:"flex",flexDirection:"column",zIndex:55}}>
+          <div style={{fontWeight:800,fontSize:15,color:C.blue,marginBottom:10,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🛒 Giỏ hàng {totalQty>0&&<span style={{fontSize:11,background:C.blueLight,color:C.blue,borderRadius:10,padding:"2px 8px"}}>{totalQty} sp</span>}</div>
+          <div style={{flex:1,minHeight:0,overflowY:"auto"}}>
+            {cartProds.length===0
+              ?<div style={{textAlign:"center",padding:"30px 0",color:C.textMuted}}><div style={{fontSize:32}}>🛒</div><div style={{marginTop:6,fontSize:13}}>Chưa có sản phẩm nào</div></div>
+              :cartItemsContent}
+          </div>
+          {cartProds.length>0&&<div style={{flexShrink:0,paddingTop:8}}>{cartActionsContent}</div>}
+        </div>
+      )}
+      </div>
+      {!isDesktop&&showCart&&(
+        <Modal onClose={()=>setShowCart(false)} fullBottom>
+          <ModalHeader title="🛒 Giỏ hàng" onClose={()=>setShowCart(false)}/>
+          {cartItemsContent}
+          {cartActionsContent}
         </Modal>
       )}
       <Toast msg={toast}/>
