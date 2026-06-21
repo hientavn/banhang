@@ -426,6 +426,18 @@ function doPost(e) {
       }
       res.ok = true;
 
+    } else if (act === 'updateProduct') {
+      const sh = ss.getSheetByName('SanPham');
+      const rows = sh.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(body.id)) {
+          if (body.gia !== undefined) sh.getRange(i+1, 3).setValue(Number(body.gia)||0);
+          if (body.von !== undefined) sh.getRange(i+1, 4).setValue(Number(body.von)||0);
+          break;
+        }
+      }
+      res.ok = true;
+
     } else {
       res.error = 'Unknown action: ' + act;
     }
@@ -878,10 +890,13 @@ function SellerProfile({currentUser,onLogout,onUpdateUser,orders,debts,customers
 /* ── PRINT MODAL ────────────────────────────────────────────── */
 function PrintModal({data,onClose}){
   const ref=useRef(null);
+  const [localRows,setLocalRows]=useState(data?.rows||[]);
+  const [editingSL,setEditingSL]=useState(null); // index dòng đang sửa SL
+  useEffect(()=>{setLocalRows(data?.rows||[]);setEditingSL(null);},[data]);
   if(!data) return null;
   const thStyle={padding:"6px 8px",background:"#1565C0",color:"white",fontWeight:700,fontSize:11,textAlign:"left"};
   const tdStyle=(i)=>({padding:"5px 8px",borderBottom:"1px solid #E2E8F0",fontSize:12,background:i%2===0?"#F8FAFC":"white"});
-  const zaText=`${data.title}\n${data.date}\n\n`+data.rows.map((r,i)=>`${i+1}. ${r.tenHang||r.ten}${r.ghiChu?` 📝${r.ghiChu}`:r.tenKH&&data.type!=="tong"?` (${r.tenKH})`:""}: ${r.sl}`).join("\n");
+  const zaText=`${data.title}\n${data.date}\n\n`+localRows.map((r,i)=>`${i+1}. ${r.tenHang||r.ten}${r.ghiChu?` 📝${r.ghiChu}`:r.tenKH&&data.type!=="tong"?` (${r.tenKH})`:""}: ${r.sl}`).join("\n");
   return(
     <Modal onClose={onClose}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
@@ -907,13 +922,22 @@ function PrintModal({data,onClose}){
         <div style={{fontWeight:800,fontSize:13,color:C.blue,marginBottom:6}}>{data.title} — {data.date}</div>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead><tr><th style={thStyle}>STT</th>{data.type!=="tong"&&<th style={{...thStyle,width:90,whiteSpace:"nowrap"}}>KHÁCH</th>}<th style={{...thStyle,width:"99%"}}>TÊN HÀNG</th><th style={{...thStyle,textAlign:"center"}}>SL</th></tr></thead>
-          <tbody>{data.rows.map((r,i)=>(
+          <tbody>{localRows.map((r,i)=>(
             <tr key={i}><td style={tdStyle(i)}>{i+1}</td>{data.type!=="tong"&&<td style={{...tdStyle(i),fontWeight:600,whiteSpace:"nowrap",minWidth:90}}>{r.tenKH||"—"}</td>}
               <td style={tdStyle(i)}>{r.tenHang||r.ten}{r.ghiChu&&<div style={{fontSize:10,color:"#888",marginTop:2}}>📝 {r.ghiChu}</div>}</td>
-              <td style={{...tdStyle(i),textAlign:"center",fontWeight:800,color:"#1565C0"}}>{r.sl}</td></tr>
+              <td style={{...tdStyle(i),textAlign:"center",fontWeight:800,color:"#1565C0"}} onClick={()=>data.type==="tong"&&setEditingSL(i)}>
+                {data.type==="tong"
+                  ? (editingSL===i
+                      ?<input autoFocus inputMode="numeric" defaultValue={r.sl} onFocus={e=>e.target.select()}
+                          onBlur={e=>{const v=Math.max(0,parseInt(e.target.value)||0);setLocalRows(rs=>rs.map((x,xi)=>xi===i?{...x,sl:v}:x));setEditingSL(null);}}
+                          onKeyDown={e=>e.key==="Enter"&&e.target.blur()}
+                          style={{width:30,textAlign:"center",fontWeight:800,color:"#1565C0",border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0,display:"inline-block"}}/>
+                      :<span style={{cursor:"text",width:30,display:"inline-block"}}>{r.sl}</span>)
+                  : r.sl}
+              </td></tr>
           ))}</tbody>
         </table>
-        <div style={{textAlign:"right",fontWeight:800,fontSize:13,marginTop:6,paddingRight:4}}>TỔNG: {data.rows.reduce((a,r)=>a+r.sl,0)}</div>
+        <div style={{textAlign:"right",fontWeight:800,fontSize:13,marginTop:6,paddingRight:4}}>TỔNG: {localRows.reduce((a,r)=>a+r.sl,0)}</div>
       </div>
     </Modal>
   );
@@ -1131,8 +1155,8 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
             <div style={{fontWeight:800,fontSize:15}}>Tổng {sel.items?.reduce((a,it)=>a+(it.sl||0),0)} SP</div>
             <div style={{fontWeight:900,fontSize:19,color:C.orange}}>{fmt(sel.tongTien)}</div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <Btn onClick={async()=>{
+          <div style={{display:"flex",gap:6}}>
+            <Btn sm onClick={async()=>{
               let orderToEdit=sel;
               // Lấy dữ liệu mới nhất từ GS nếu có API
               if(api){
@@ -1146,9 +1170,9 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
               }
               onEditOrder(orderToEdit);setSel(null);
             }} color={C.blue} style={{flex:1}}>✏️ Sửa</Btn>
-            <Btn onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳...":"✅ Duyệt"}</Btn>
-            <Btn onClick={()=>{printOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
-            <Btn onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
+            <Btn sm onClick={()=>approve(sel.id)} color={C.green} style={{flex:1}} disabled={busyApprove}>{busyApprove?"⏳":"✅ Duyệt"}</Btn>
+            <Btn sm onClick={()=>{printOrder(sel);setSel(null);}} outline color={C.blue} style={{flex:1}}>🖨️ In</Btn>
+            <Btn sm onClick={async()=>{if(!window.confirm("Xoá đơn "+sel.id+"?")) return;
               const isDone=sel.trangThai==="done";
               if(api){
                 const res=await api.post("cancelOrder",{
@@ -1176,10 +1200,21 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
 
 /* ── SELL KH SELECT (autocomplete on white bg for header) ─── */
 
-function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrder}){
+function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrder,setEditOrder}){
   const [cart,setCart]=useState({});
   const [cartNote,setCartNote]=useState({});
   const [cartGia,setCartGia]=useState({});
+  const [editingPrice,setEditingPrice]=useState(null); // `${p.id}_gia` hoặc `${p.id}_von`
+  const savePrice=async(p,field,val)=>{
+    const num=Math.max(0,parseInt(String(val).replace(/[^0-9]/g,""))||0);
+    setProducts&&setProducts(ps=>ps.map(x=>x.id===p.id?{...x,[field]:num}:x));
+    setEditingPrice(null);
+    if(api){
+      const body={id:p.id, gia: field==="gia"?num:p.gia, von: field==="von"?num:p.von};
+      const r=await api.post("updateProduct",body);
+      if(r?.error) console.error("updateProduct error:",r.error);
+    }
+  };
   const [selKH,setSelKH]=useState("le");
   const [search,setSearch]=useState("");
   const [nhom,setNhom]=useState("Tất cả");
@@ -1290,8 +1325,16 @@ function SellTab({products,customers,setOrders,setDebts,api,editOrder,setEditOrd
       <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
         {filtered.map(p=>{const qty=cart[p.id]||0;return(
           <div key={p.id} style={{background:C.card,borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:6,boxShadow:C.shadow}}>
-            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:1}}>
-                <div style={{fontSize:13,color:C.blue,fontWeight:800}}>{fmt(p.gia)}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}>
+                {p.von>0&&<>
+                  {editingPrice===`${p.id}_von`
+                    ?<input autoFocus inputMode="numeric" defaultValue={p.von} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"von",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:38,flexShrink:0,fontSize:11,color:C.textMuted,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+                    :<span onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_von`);}} style={{fontSize:11,color:C.textMuted,cursor:"text",width:38,flexShrink:0,display:"inline-block",overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.von)}</span>}
+                  <span style={{color:C.textMuted,fontSize:11,flexShrink:0}}>→</span>
+                </>}
+                {editingPrice===`${p.id}_gia`
+                  ?<input autoFocus inputMode="numeric" defaultValue={p.gia} onFocus={e=>e.target.select()} onBlur={e=>savePrice(p,"gia",e.target.value)} onKeyDown={e=>e.key==="Enter"&&e.target.blur()} onClick={e=>e.stopPropagation()} style={{width:46,flexShrink:0,fontSize:13,color:C.blue,fontWeight:800,border:"none",outline:"none",fontFamily:font,background:"transparent",padding:0}}/>
+                  :<div onClick={e=>{e.stopPropagation();setEditingPrice(`${p.id}_gia`);}} style={{fontSize:13,color:C.blue,fontWeight:800,cursor:"text",width:46,flexShrink:0,overflow:"hidden",whiteSpace:"nowrap"}}>{fmt(p.gia)}</div>}
                 {p.nhan&&<div style={{fontSize:11,color:C.textMuted,fontStyle:"italic"}}>{p.nhan}</div>}
               </div></div>
             {/* ⚡ Luôn render đủ 3 phần cố định — tránh layout nhảy khi qty 0→1 */}
@@ -2071,7 +2114,7 @@ function App(){
   if(user.loai==="seller") return(
     <div style={{maxWidth:"100%",minHeight:"100vh",fontFamily:font}}>
       <SellerTabs active={tab} onChange={setTab}/>
-      {tab==="sell"&&<SellTab products={products} customers={customers} setOrders={setOrders} setDebts={setDebts} api={api} editOrder={editOrder} setEditOrder={setEditOrder}/>}
+      {tab==="sell"&&<SellTab products={products} setProducts={setProducts} customers={customers} setOrders={setOrders} setDebts={setDebts} api={api} editOrder={editOrder} setEditOrder={setEditOrder}/>}
       {tab==="orders"&&<OrdersTab orders={orders} setOrders={setOrders} debts={debts} setDebts={setDebts} api={api} onEditOrder={startEditOrder} currentUser={user}/>}
       {tab==="debt"&&<DebtTab customers={customers} debts={debts} setDebts={setDebts} orders={orders} api={api} role="seller" currentUser={user}/>}
       {tab==="customers"&&<CustomersTab customers={customers} setCustomers={setCustomers} orders={orders} debts={debts} api={api}/>}
