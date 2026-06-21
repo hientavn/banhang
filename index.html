@@ -429,14 +429,20 @@ function doPost(e) {
     } else if (act === 'updateProduct') {
       const sh = ss.getSheetByName('SanPham');
       const rows = sh.getDataRange().getValues();
+      let found = false;
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][0]) === String(body.id)) {
+        if (String(rows[i][0]).trim() === String(body.id).trim()) {
+          found = true;
           if (body.gia !== undefined) sh.getRange(i+1, 3).setValue(Number(body.gia)||0);
           if (body.von !== undefined) sh.getRange(i+1, 4).setValue(Number(body.von)||0);
           break;
         }
       }
-      res.ok = true;
+      if (!found) {
+        res.error = 'Không tìm thấy sản phẩm id=' + body.id + ' trong sheet SanPham';
+      } else {
+        res.ok = true;
+      }
 
     } else {
       res.error = 'Unknown action: ' + act;
@@ -993,20 +999,21 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
     if(busyApprove) return; setBusyApprove(true);
     try{
       const o=orders.find(x=>x.id===id); if(!o) return;
+      const approvedAt=nowISO(); // ⚡ Mốc thời gian duyệt — dùng chung cho DonHang.ngay + CongNo.ngay
 
-      // Bước 1: Cập nhật DonHang → done
+      // Bước 1: Cập nhật DonHang → done + ngày = thời điểm duyệt
       if(api){
-        const r=await api.post("approveOrder",{id});
+        const r=await api.post("approveOrder",{id, ngay:approvedAt});
         if(r?.error){ notify("⚠️ Lỗi duyệt: "+r.error); return; }
       }
-      setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done"}:x));
+      setOrders(os=>os.map(x=>x.id===id?{...x,trangThai:"done",ngay:approvedAt}:x));
 
       // Bước 2: Ghi CongNo (giống flow Bán) — chỉ với khách có tên
       if(o.maKH && o.maKH!=="le"){
         const de={
           id:genId("CN"), maKH:o.maKH, tenKH:o.tenKH,
           loai:"no", soTien:o.tongTien,
-          ngay:nowISO(), ghiChu:id, maDon:id
+          ngay:approvedAt, ghiChu:id, maDon:id
         };
         if(api){
           const r2=await api.post("addDebt",de);
@@ -1212,7 +1219,7 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
     if(api){
       const body={id:p.id, gia: field==="gia"?num:p.gia, von: field==="von"?num:p.von};
       const r=await api.post("updateProduct",body);
-      if(r?.error) console.error("updateProduct error:",r.error);
+      if(r?.error){ console.error("updateProduct error:",r.error); notify("⚠️ Lỗi lưu giá: "+r.error); }
     }
   };
   const [selKH,setSelKH]=useState("le");
