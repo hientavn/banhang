@@ -767,7 +767,7 @@ function SellerTabs({active,onChange}){
   return(
     <div style={{display:"flex",background:C.card,borderBottom:`2px solid ${C.blue}`,position:"sticky",top:0,zIndex:50,boxShadow:"0 2px 8px rgba(21,101,192,0.1)"}}>
       {tabs.map(t=>(
-        <button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:"8px 1px 6px",border:"none",borderBottom:active===t.id?`2.5px solid ${C.blue}`:"2.5px solid transparent",cursor:"pointer",fontFamily:font,background:"transparent",color:active===t.id?C.blue:C.textSec,fontWeight:active===t.id?800:500,transition:"all 0.18s",minWidth:0,overflow:"hidden"}}>
+        <button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:"8px 1px 6px",border:"none",cursor:"pointer",fontFamily:font,background:"transparent",color:active===t.id?C.blue:C.textSec,fontWeight:active===t.id?800:500,transition:"all 0.18s",minWidth:0,overflow:"hidden"}}>
           <div style={{fontSize:15}}>{t.ic}</div>
           <div style={{fontSize:8,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.lb}</div>
         </button>
@@ -1385,7 +1385,7 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
         </div>
       </div>
             <div style={isDesktop?{display:"flex",gap:16,padding:"8px 12px",alignItems:"flex-start"}:{}}>
-      <div style={isDesktop?{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6,marginRight:392}:{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
+      <div style={isDesktop?{width:"calc(50vw - 20px)",flexShrink:0,display:"flex",flexDirection:"column",gap:6}:{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
         {filtered.map(p=>{const qty=cart[p.id]||0;return(
           <div key={p.id} style={{background:C.card,borderRadius:14,padding:"10px 14px",display:"flex",alignItems:"center",gap:6,boxShadow:C.shadow}}>
             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,fontSize:14,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.ten}</div><div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}>
@@ -1412,7 +1412,7 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
         {filtered.length===0&&<div style={{textAlign:"center",padding:40,color:C.textMuted}}><div style={{fontSize:40}}>🔍</div><div style={{fontWeight:600,marginTop:8}}>Không tìm thấy sản phẩm</div></div>}
       </div>
       {isDesktop&&(
-        <div style={{position:"fixed",top:188,right:12,width:380,background:C.card,borderRadius:16,padding:16,boxShadow:C.shadow,maxHeight:"calc(100vh - 200px)",display:"flex",flexDirection:"column",zIndex:55}}>
+        <div style={{position:"fixed",top:208,left:"calc(50vw + 8px)",right:12,background:C.card,borderRadius:16,padding:16,boxShadow:C.shadow,maxHeight:"calc(100vh - 220px)",display:"flex",flexDirection:"column",zIndex:55}}>
           <div style={{fontWeight:800,fontSize:15,color:C.blue,marginBottom:10,display:"flex",alignItems:"center",gap:6,flexShrink:0}}>🛒 Giỏ hàng {totalQty>0&&<span style={{fontSize:11,background:C.blueLight,color:C.blue,borderRadius:10,padding:"2px 8px"}}>{totalQty} sp</span>}</div>
           <div style={{flex:1,minHeight:0,overflowY:"auto"}}>
             {cartProds.length===0
