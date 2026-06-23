@@ -1124,7 +1124,7 @@ function NguonHangTab({orders,products,setOrders,setDebts,api,onEditOrder}){
                   <Badge label="⏳ Chờ" color={C.orange} bg={C.orangeLight} size={10}/>
                 </div>
                 <div style={{fontWeight:700,fontSize:14,color:C.text}}>{o.tenKH}</div>
-                <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} · {o.items?.length||0} sp</div>
+                <div style={{fontSize:11,color:C.textMuted,marginTop:2}}>{fmtDate(o.ngay)} · {o.items?.length||0} mã ({o.items?.reduce((a,it)=>a+(it.sl||0),0)||0} sp)</div>
               </div>
               <div style={{textAlign:"right"}}>
                 <div style={{fontWeight:900,fontSize:16,color:C.orange}}>{fmt(o.tongTien)}</div>
@@ -1240,6 +1240,7 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
   const [showCart,setShowCart]=useState(false);
   const [toast,setToast]=useState("");
   const [busy,setBusy]=useState(false);
+  const busyRef=useRef(false); // ⚡ Chặn double-submit tức thì, không phụ thuộc kịp re-render hay không
   const [editingQty,setEditingQty]=useState(null);
   const notify=(m)=>{setToast(m);setTimeout(()=>setToast(""),2500);};
   const reset=()=>{setCart({});setCartNote({});setCartGia({});setShowCart(false);setEditingQty(null);};
@@ -1266,9 +1267,13 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
   const totalQty=Object.values(cart).reduce((a,b)=>a+b,0);
   const add=(p)=>setCart(c=>({...c,[p.id]:Math.min(999,(c[p.id]||0)+1)}));
   const dec=(p)=>setCart(c=>({...c,[p.id]:Math.max(0,(c[p.id]||0)-1)}));
+  const lastSubmitAt=useRef(0);
   const submit=async(mode)=>{
-    if(busy) return;
+    const now=Date.now();
+    if(busyRef.current||busy||now-lastSubmitAt.current<1500) return; // ⚡ Chặn double-submit: ref + debounce 1.5s
+    lastSubmitAt.current=now;
     if(totalQty===0){notify("⚠️ Chưa có sản phẩm!");return;}
+    busyRef.current=true;
     setBusy(true);
     try{
       const khObj=customers.find(k=>k.id===selKH);
@@ -1314,7 +1319,7 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
       setOrders(os=>[o,...os]);
       if(mode==="sell"){const de={id:genId("CN"),maKH:selKH==="le"?"le":selKH,tenKH:khObj?.ten||"Khách lẻ",loai:"no",soTien:total,ngay:nowISO(),ghiChu:`Bán ${id}`,maDon:id};if(api){ const r=await api.post("addDebt",de); if(r?.error) console.error("addDebt error:",r.error,de); }setDebts(ds=>[de,...ds]);notify("✅ Bán hàng thành công!");}else{notify("✅ Đặt hàng thành công!");}
       reset();
-    }catch(e){notify("❌ Lỗi: "+e.message);}finally{setBusy(false);}
+    }catch(e){notify("❌ Lỗi: "+e.message);}finally{busyRef.current=false;setBusy(false);}
   };
   const cartItemsContent = (
     <>
@@ -1354,12 +1359,12 @@ function SellTab({products,setProducts,customers,setOrders,setDebts,api,editOrde
           {editOrder
             ?<div style={{display:"flex",gap:8}}>
               <Btn onClick={()=>{setEditOrder(null);reset();}} outline color={C.red} style={{flex:1}}>🗑️ Huỷ</Btn>
-              <Btn onClick={()=>submit("update")} color={C.blue} style={{flex:2}} disabled={busy}>{busy?"⏳...":"✅ Cập nhật đơn"}</Btn>
+              <Btn onClick={()=>submit("update")} color={C.blue} style={{flex:2,pointerEvents:busy?"none":"auto"}} disabled={busy}>{busy?"⏳...":"✅ Cập nhật đơn"}</Btn>
             </div>
             :<div style={{display:"flex",gap:8}}>
-              <Btn onClick={reset} outline color={C.red} style={{flex:1}}>🗑️ Xoá</Btn>
-              <Btn onClick={()=>submit("order")} outline color={C.orange} style={{flex:1}} disabled={busy}>📋 Đặt</Btn>
-              <Btn onClick={()=>submit("sell")} color={C.green} style={{flex:1}} disabled={busy}>💰 Bán</Btn>
+              <Btn onClick={reset} outline color={C.red} style={{flex:1,pointerEvents:busy?"none":"auto"}} disabled={busy}>🗑️ Xoá</Btn>
+              <Btn onClick={()=>submit("order")} outline color={C.orange} style={{flex:1,pointerEvents:busy?"none":"auto"}} disabled={busy}>{busy?"⏳...":"📋 Đặt"}</Btn>
+              <Btn onClick={()=>submit("sell")} color={C.green} style={{flex:1,pointerEvents:busy?"none":"auto"}} disabled={busy}>{busy?"⏳...":"💰 Bán"}</Btn>
             </div>
           }
     </>
@@ -1549,7 +1554,7 @@ function OrdersTab({orders,setOrders,debts,setDebts,api,onEditOrder,currentUser}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
         <div style={{fontSize:13,color:C.text,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>
-          {o.tenKH} <span style={{color:C.textMuted,fontWeight:500}}>· {fmtDate(o.ngay)} · {o.items?.length||0} sp</span>
+          {o.tenKH} <span style={{color:C.textMuted,fontWeight:500}}>· {fmtDate(o.ngay)} · {o.items?.length||0} mã ({o.items?.reduce((a,it)=>a+(it.sl||0),0)||0} sp)</span>
         </div>
         <div style={{fontSize:12,color:C.green,fontWeight:700,flexShrink:0,marginLeft:10}}>+{fmt(o.tongTien-o.tongVon)}</div>
       </div>
